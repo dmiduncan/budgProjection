@@ -115,18 +115,8 @@ let txData =
             "recurDay": 0,
             "targetDate": "2025-08-30",
             "isBiweekly": false,
-            "amount": -375,
+            "amount": -75,
             "name": "Actual Roth IRA Contribution",
-            "description": ""
-          },
-          {
-            "startDate": 0,
-            "endDate": 0,
-            "recurDay": 0,
-            "targetDate": "2025-08-02",
-            "isBiweekly": false,
-            "amount": -400,
-            "name": "James and Flash Tattoo",
             "description": ""
           },
           {
