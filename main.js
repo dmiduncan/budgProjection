@@ -1,4 +1,3 @@
-// import txData from './plannedTxData.json' assert { type: 'json' };
 
 function isInArray(array, value) {
   return !!array.find(item => {return item.getDate() == value.getDate() && item.getMonth() == value.getMonth()});
@@ -6,7 +5,7 @@ function isInArray(array, value) {
 
 let txData = 
     {
-        "currentBalance" : 3111.00,
+        "currentBalance" : 0.00,
         "savingsBalance" : 0.00,
         "transactions" : [
           {
@@ -237,11 +236,6 @@ function recalc() {
                 && ((currTx.recurDay !== 0 && currTx.recurDay === date.getDate())
                     || (currTx.isBiweekly && isInArray(payDates, date)) 
                     || (currTx.recurDay === 0 && !currTx.isBiweekly && targetDate.getTime() === date.getTime()))) {
-                     
-                      // if (currTx.name === ('Savings')) {
-                      //   savingsBalance += currTx.amount;
-                      //   txList.insertAdjacentHTML('beforeend', `<li>${date.toLocaleDateString("en-US")} - ${currTx.name}<ul><li>Amount Saved: ${currTx.amount}</li><li>New Savings: ${savingsBalance.toFixed(2)}</li></ul></li>`)
-                      // } else {
                         currentBalance += currTx.amount;
                         if (currTx.name === ('<---- Monthly Low Balance ---->'))
                         {
@@ -251,17 +245,11 @@ function recalc() {
                         {
                           txList.insertAdjacentHTML('beforeend', `<li>${currTx.name}<ul><li>${date.toLocaleDateString("en-US")}</li><li>Tx Amount: ${currTx.amount}</li><li>New Blance: ${currentBalance.toFixed(2)}</li></ul></li>`)  
                         }
-                        // txList.insertAdjacentHTML('beforeend', `<li>${date.toLocaleDateString("en-US")} - ${currTx.name}<ul><li>Tx Amount: ${currTx.amount}</li><li>New Blance: ${currentBalance.toFixed(2)}</li></ul></li>`)
-                        // txList.insertAdjacentHTML('beforeend', `<li>${currTx.name}<ul><li>${date.toLocaleDateString("en-US")}</li><li>Tx Amount: ${currTx.amount}</li><li>New Blance: ${currentBalance.toFixed(2)}</li></ul></li>`)
-                      // }
           }
         }
     }
-
-    // txList.insertAdjacentHTML('beforeend', `<li>Savings Total for Year: ${savingsTotal.toFixed(2)}</li>`)
 
     txBucket.replaceChildren(txList);
 }
 
 document.getElementById('recalcButton').onclick = recalc;
-// document.getElementById('recalcButton').on('click', recalc);
