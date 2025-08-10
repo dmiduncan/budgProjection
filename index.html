@@ -1,45 +1,41 @@
 <!DOCTYPE html>
 <html lang="en-US">
- 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Today's Date</title>
+    <title>Budget Managment</title>
     <link rel="stylesheet" href="./css/main.css">
-    
-    <script type="module" src="./main.js"></script>
+    <script type="module" src="./auth.js"></script>
 </head>
- 
 <body>
-    <h1>Track Expenses</h1>
-    <div id="expense-entry">
-        <form id="expense-form">
-            <div id="value-entry" style="display: flex; align-items: center; gap: 1rem;">
-                <label for="expense-date">Date:</label>
-                <input type="date" id="expense-date" name="expense-date" style="color: grey;" required>
-                <label for="expense-cost">Amount Spent:</label>
-                <input type="number" id="expense-cost" name="expense-cost" step="any" value="0.00" style="width: 200px; color: grey;" required>      
-                <label for="expense-type">Expense Type:</label>
-                <select id="expense-type" name="expense-type" style="width: 200px;" required></select>
-            </div>
-            <br>
-            <button type="submit" id="submit-expense">Submit</button>
-        </form>
-        <div id="expense-message"></div>
-    </div>
+    <div id="app-container" style="display:none;">
+        <h2>Track Expenses</h2>
+        <div id="expense-entry">
+            <form id="expense-form">
+                <div id="value-entry" style="display: flex; align-items: center; gap: 1rem;">
+                    <label for="expense-date">Date:</label>
+                    <input type="date" id="expense-date" name="expense-date" style="color: grey;" required>
+                    <label for="expense-cost">Amount Spent:</label>
+                    <input type="number" id="expense-cost" name="expense-cost" step="any" value="0.00" style="width: 200px; color: grey;" required>
+                    <label for="expense-type">Expense Type:</label>
+                    <select id="expense-type" name="expense-type" style="width: 200px;" required></select>
+                </div>
+                <br>
+                <button type="submit" id="submit-expense">Submit</button>
+            </form>
+            <div id="expense-message"></div>
+        </div>
 
-    <h1>Budgeting</h1>
-
-    <label>Starting Balance:</label>
-    <input type="number" id="balanceInput" name="balanceInput" value = 0>
-    <br><br>
-    <button id="recalcButton">Calculate Balance Projection</button>
-    <br>
-    <h2>Transactions</h2>
-    <div id="txBucket">
-        <ul id="txList">
-        </ul>
+        <h2>Budgeting</h2>
+        <label>Starting Balance:</label>
+        <input type="number" id="balanceInput" name="balanceInput" value="0">
+        <br><br>
+        <button id="recalcButton">Calculate Balance Projection</button>
+        <br>
+        <h2>Transactions</h2>
+        <div id="txBucket">
+            <ul id="txList"></ul>
+        </div>
     </div>
 </body>
- 
 </html>
