@@ -12,10 +12,11 @@ export async function initApp(supabase) {
       "Power",
       "Gas",
       "Water",
+      "Trash",
       "Home",
       "Eating Out",
       "Kids School",
-      "Excess"
+      "Excess",
   ];
 
   // --- Populate expense type dropdown ---
