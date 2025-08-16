@@ -1,3 +1,5 @@
+import { processExpenses } from './processExpenses.js';
+
 // main.js
 // Exported initApp(supabase) — call this after login from auth.js
 export async function initApp(supabase) {
@@ -17,6 +19,9 @@ export async function initApp(supabase) {
       "Eating Out",
       "Kids School",
       "Excess",
+      "Auto Service Plan",
+      "Subscription",
+      "Monthly Total"
   ];
 
   // --- Populate expense type dropdown ---
@@ -25,10 +30,13 @@ export async function initApp(supabase) {
       if (!select) return;
       select.innerHTML = '';
       expenseTypesEnum.forEach(type => {
-          const option = document.createElement('option');
+        if (type != 'Monthly Total')
+        {
+            const option = document.createElement('option');
           option.value = type;
           option.textContent = type;
           select.appendChild(option);
+        }
       });
   }
 
@@ -244,4 +252,17 @@ export async function initApp(supabase) {
 
   // Done initializing app
   console.log('initApp finished: UI wired and data loaded.');
+
+  const processBtn = document.getElementById('process-expenses-btn');
+    if (processBtn) {
+        processBtn.onclick = async () => {
+            try {
+                // expenseTypesEnum is defined in main.js
+                const result = await processExpenses(supabase, expenseTypesEnum);
+                alert(`Monthly processing complete.\n${result ? 'Total for prior month: $' + result.total.toFixed(2) : ''}`);
+            } catch (err) {
+                alert('Error processing monthly expenses: ' + (err?.message || err));
+            }
+        };
+    }
 }
