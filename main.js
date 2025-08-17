@@ -149,20 +149,11 @@ export async function initApp(supabase) {
 
   // Fetch transactions from Supabase (filtered to the user if user_id exists)
   async function fetchDataAndInit() {
-    // Try to get current user (if not available, still fetch public rows)
-    // let userId = null;
-    // try {
-    //   const userResp = await supabase.auth.getUser();
-    //   userId = userResp?.data?.user?.id ?? null;
-    // } catch (err) {
-    //   userId = null;
-    // }
-
-    let query = supabase.from('lu_transaction').select('*');
-    // if (userId) {
-    //   // if you add user_id column and RLS later, this ensures only user's rows are requested
-    //   query = query.eq('user_id', userId);
-    // }
+    // let query = supabase.from('lu_transaction').select('*');
+    let query = supabase
+        .from('lu_transaction')
+        .select('*')
+        .order('priority', { ascending: true });
 
     const { data, error } = await query;
     if (error) {
