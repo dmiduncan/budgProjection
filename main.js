@@ -16,6 +16,7 @@ export async function initApp(supabase) {
       "Water",
       "Trash",
       "Home",
+      "Internet",
       "Eating Out",
       "Kids School",
       "Excess",
