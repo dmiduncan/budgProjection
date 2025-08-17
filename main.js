@@ -21,6 +21,7 @@ export async function initApp(supabase) {
       "Excess",
       "Auto Service Plan",
       "Subscription",
+      "Haircut",
       "Monthly Total"
   ];
 
@@ -258,8 +259,21 @@ export async function initApp(supabase) {
         processBtn.onclick = async () => {
             try {
                 // expenseTypesEnum is defined in main.js
-                const result = await processExpenses(supabase, expenseTypesEnum);
-                alert(`Monthly processing complete.\n${result ? 'Total for prior month: $' + result.total.toFixed(2) : ''}`);
+                const result = await processExpenses(supabase, expenseTypesEnum, 1);
+                alert(`Prior months processing complete.\n${result ? 'Total for prior month: $' + result.total.toFixed(2) : ''}`);
+            } catch (err) {
+                alert('Error processing monthly expenses: ' + (err?.message || err));
+            }
+        };
+    }
+
+  const processCurrBtn = document.getElementById('process-current-expenses-btn');
+    if (processCurrBtn) {
+        processCurrBtn.onclick = async () => {
+            try {
+                // expenseTypesEnum is defined in main.js
+                const result = await processExpenses(supabase, expenseTypesEnum, 0);
+                alert(`current months processing complete.\n${result ? 'Total for current month: $' + result.total.toFixed(2) : ''}`);
             } catch (err) {
                 alert('Error processing monthly expenses: ' + (err?.message || err));
             }

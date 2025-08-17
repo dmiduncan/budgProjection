@@ -1,24 +1,28 @@
 // processExpenses.js
 
 // This function fetches expenses for the prior month from 'lu_expense',
-// aggregates by type, and upserts (insert or update) per-type monthly totals into 'lu_monthly_expenses'.
+// aggregates by type, and upserts (insert or update) per-type monthly totals into 'lu_monthly_expense'.
 // It avoids duplicate entries and only updates if the value is different.
 // It also returns the grand total for the month.
 
-export async function processExpenses(supabase, expenseTypesEnum) {
+export async function processExpenses(supabase, expenseTypesEnum, monthModifier) {
   // Determine prior month and year
   const today = new Date();
-  const priorMonthDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+  const priorMonthDate = new Date(today.getFullYear(), today.getMonth(), 1); // This is technically the current month in JS, but for Supabase it would be viewed as prior month.
   const year = priorMonthDate.getFullYear();
-  const month = priorMonthDate.getMonth() + 1; // JS months are 0-based
+  // JS months are 0-based. We add a month to normalize the number and then subtract the modifier (current or previous).
+  const month = priorMonthDate.getMonth() + 1 - monthModifier; 
 
   // Calculate start and end dates for the prior month
-  const monthStart = new Date(year, priorMonthDate.getMonth(), 1);
-  const monthEnd = new Date(year, priorMonthDate.getMonth() + 1, 0);
-  const startStr = monthStart.toISOString().slice(0, 10);
-  const endStr = monthEnd.toISOString().slice(0, 10);
+  // TODO probably need to adjust the period end to roll over. Not sure how it will handle when the month is 11 or 12.
+  const periodStart = new Date(year, month - 1, 1);
+  const periodEnd = new Date(year, month, 0);
+  const startStr = periodStart.toISOString().slice(0, 10);
+  const endStr = periodEnd.toISOString().slice(0, 10);
 
-  // Fetch expenses for the prior month
+  console.log(startStr + ' ' + endStr);
+
+  // Fetch expenses for the prior and current month
   let { data: expenses, error } = await supabase
     .from('lu_expense')
     .select('*')
@@ -39,14 +43,16 @@ export async function processExpenses(supabase, expenseTypesEnum) {
     monthTotal += exp.expense_cost;
   }
 
+  typeTotals['Monthly Total'] = monthTotal;
+
   // Fetch existing monthly entries for this month and all types
-  const { data: existingRows, error: fetchExistingError } = await supabase
-    .from('lu_monthly_expenses')
+  let { data: existingRows, error2} = await supabase
+    .from('lu_monthly_expense')
     .select('id, amount, type')
     .eq('year', year)
     .eq('month', month);
 
-  if (fetchExistingError) {
+  if (error2) {
     console.error("Error fetching existing monthly aggregates:", fetchExistingError);
     return;
   }
@@ -83,19 +89,19 @@ export async function processExpenses(supabase, expenseTypesEnum) {
   // Perform inserts if needed
   if (inserts.length > 0) {
     const { error: insertError } = await supabase
-      .from('lu_monthly_expenses')
+      .from('lu_monthly_expense')
       .insert(inserts);
     if (insertError) {
       console.error("Error inserting new monthly per-type aggregates:", insertError);
     } else {
-      console.log(`Inserted ${inserts.length} new rows for ${year}-${month} into lu_monthly_expenses.`);
+      console.log(`Inserted ${inserts.length} new rows for ${year}-${month} into lu_monthly_expense.`);
     }
   }
 
   // Perform updates if needed
   for (const update of updates) {
     const { error: updateError } = await supabase
-      .from('lu_monthly_expenses')
+      .from('lu_monthly_expense')
       .update({ amount: update.amount })
       .eq('id', update.id);
     if (updateError) {

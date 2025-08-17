@@ -19,13 +19,15 @@
                     <input type="number" id="expense-cost" name="expense-cost" step="any" value="0.00" style="width: 200px; color: grey;" required>
                     <label for="expense-type">Expense Type:</label>
                     <select id="expense-type" name="expense-type" style="width: 200px;" required></select>
+                    <button type="submit" id="submit-expense">Submit</button>
                 </div>
                 <br>
-                <button type="submit" id="submit-expense">Submit</button>
+                
             </form>
             <div id="expense-message"></div>
         </div>
         <button type="button" id="process-expenses-btn">Process Last Month's Expenses</button>
+        <button type="button" id="process-current-expenses-btn">Process Current Month's Expenses</button>
 
         <h2>Budgeting</h2>
         <label>Starting Balance:</label>
