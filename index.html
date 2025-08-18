@@ -6,6 +6,11 @@
     <title>Budget Managment</title>
     <link rel="stylesheet" href="./css/main.css">
     <script type="module" src="./auth.js"></script>
+    <style>
+        ul {
+            list-style-type: none;
+        }
+    </style>
 </head>
 <body>
     <div id="app-container" style="display:none;">
@@ -20,14 +25,13 @@
                     <label for="expense-type">Expense Type:</label>
                     <select id="expense-type" name="expense-type" style="width: 200px;" required></select>
                     <button type="submit" id="submit-expense">Submit</button>
-                </div>
-                <br>
-                
+                </div>                
             </form>
             <div id="expense-message"></div>
         </div>
-        <button type="button" id="process-expenses-btn">Process Last Month's Expenses</button>
-        <button type="button" id="process-current-expenses-btn">Process Current Month's Expenses</button>
+        <button type="button" id="process-expenses-btn">Process Last Month</button>
+        <button type="button" id="process-current-expenses-btn">Process This Month</button>
+        <button type="button" onclick="window.location.href='expensegraph.html'">Trends</button>
 
         <h2>Budgeting</h2>
         <label>Starting Balance:</label>
@@ -37,7 +41,7 @@
         <br>
         <h2>Transactions</h2>
         <div id="txBucket">
-            <ul id="txList"></ul>
+            <ul id="txList" class=""></ul>
         </div>
     </div>
 </body>

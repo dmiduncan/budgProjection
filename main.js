@@ -225,13 +225,13 @@ export async function initApp(supabase) {
                       || (currTx.isBiweekly && isInArray(payDates, date))
                       || (currTx.recurDay === 0 && !currTx.isBiweekly && targetDate.getTime() === date.getTime()))) {
                           currentBalance += currTx.amount;
-                          if (currTx.name === ('<---- Monthly Low Balance ---->'))
+                          if (currTx.name === ('Monthly Low Balance'))
                           {
-                              txList.insertAdjacentHTML('beforeend', `<li>${currTx.name}<ul><li>New Blance: ${currentBalance.toFixed(2)}</li></ul></li>`)
+                              txList.insertAdjacentHTML('beforeend', `<li><h3>${date.toLocaleString('default', { month: 'long' })} ${currTx.name}: $${currentBalance.toFixed(2)}</h3></li><hr>`)
                           }
                           else
                           {
-                            txList.insertAdjacentHTML('beforeend', `<li>${currTx.name}<ul><li>${date.toLocaleDateString("en-US")}</li><li>Tx Amount: ${currTx.amount}</li><li>New Blance: ${currentBalance.toFixed(2)}</li></ul></li>`)
+                            txList.insertAdjacentHTML('beforeend', `<li>${currTx.name}<ul><li>${date.toLocaleDateString("en-US")}</li><li>Tx Amount: ${currTx.amount}</li><li>New Blance: ${currentBalance.toFixed(2)}</li></ul></li><hr>`)
                           }
             }
           }

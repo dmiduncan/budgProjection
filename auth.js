@@ -8,8 +8,7 @@ export const supabase = createClient(supabaseUrl, supabaseKey)
 
 // UI Elements
 const authContainer = document.createElement('div')
-authContainer.innerHTML = `
-  <h2>Login or Sign Up</h2>
+authContainer.innerHTML = `\
   <div id="auth-message"></div>
   <div id="divEmail">
   <input type="email" id="email" placeholder="Email" style="width: 300px;" required>
@@ -36,8 +35,6 @@ loginBtn.addEventListener('click', async () => {
   const { error } = await supabase.auth.signInWithPassword({ email, password })
   if (error) {
     authMessage.textContent = error.message
-  } else {
-    authMessage.textContent = "Logged in!"
   }
 })
 
@@ -67,7 +64,6 @@ supabase.auth.onAuthStateChange((event, session) => {
     logoutBtn.style.display = 'inline-block'
     document.getElementById('divEmail').style.display = 'none'
     document.getElementById('divPassword').style.display = 'none'
-    authMessage.textContent = `Logged in as ${session.user.email}`
 
     // Show the main app
     document.getElementById('app-container').style.display = 'block'

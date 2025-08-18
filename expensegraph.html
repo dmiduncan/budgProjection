@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Monthly Expenses Graph</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <link rel="stylesheet" href="./css/main.css">
+  <style>
+    #expense-container { max-width: 1000px; margin: auto; padding: 2em; border-radius: 8px; }
+  </style>
+  
+</head>
+<body>
+    <button type="button" onclick="window.location.href='index.html'">Home</button>
+  <div id="expense-container">
+    <h2>Monthly Expenses</h2>
+    <canvas id="expensesChart" width="700" height="400"></canvas>
+    <br><br>
+    <h2>Monthly Expenses Total</h2>
+    <canvas id="totalChart" width="700" height="400"></canvas>
+  </div>
+  <script type="module" src="expenses-graph.js"></script>
+</body>
+</html>
