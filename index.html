@@ -17,19 +17,27 @@
         <h3>Track Expenses</h3>
         <div id="expense-entry">
             <form id="expense-form">
-                <div id="value-entry" style="display: flex; align-items: center; gap: 1rem;">
-                    <input type="date" id="expense-date" name="expense-date" style="color: grey; width: 200px; text-align: right;" required>
-                    <input type="number" id="expense-cost" name="expense-cost" step="any" value="0.00" style="width: 200px; color: grey; text-align: right;" required>
-                    <select id="expense-type" name="expense-type" style="width: 300px;" required></select>
-                    <button type="submit" id="submit-expense" style="width: 200px;">Submit</button>
-                </div>                
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <input type="date" id="expense-date" name="expense-date" style="color: grey; width: 210px; text-align: right;" required>
+                    <input type="number" id="expense-cost" name="expense-cost" step="any" value="0.00" style="width: 210px; color: grey; text-align: right;" required>
+                </div>
+                <div style="display: flex; align-items: center; gap: 1rem; margin-top: 0.5rem;">
+                    <select id="expense-type" name="expense-type" style="width: 260px;" required></select>
+                    <button type="submit" id="submit-expense">Submit</button>
+                </div>
             </form>
             <div id="expense-message"></div>
         </div>
         <h3>Monthly Tracking</h3>
-        <button type="button" id="process-expenses-btn">Process Last Month</button>
-        <button type="button" id="process-current-expenses-btn">Process This Month</button>
-        <button type="button" onclick="window.location.href='expensegraph.html'">Trends</button>
+        <div style="margin-bottom: 0.5rem;">
+            <button type="button" id="process-expenses-btn" style="width: 250px;">Last Month</button>
+        </div>
+        <div style="margin-bottom: 0.5rem;">
+            <button type="button" id="process-current-expenses-btn" style="width: 250px;">This Month</button>
+        </div>
+        <div style="margin-bottom: 0.5rem;">
+            <button type="button" onclick="window.location.href='expensegraph.html'" style="width: 250px;">Trends</button>
+        </div>
         <br><br>
         <h3>Budget Projection</h3>
         <label>Starting Balance:</label>
