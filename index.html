@@ -14,32 +14,29 @@
 </head>
 <body>
     <div id="app-container" style="display:none;">
-        <h2>Track Expenses</h2>
+        <h3>Track Expenses</h3>
         <div id="expense-entry">
             <form id="expense-form">
                 <div id="value-entry" style="display: flex; align-items: center; gap: 1rem;">
-                    <label for="expense-date">Date:</label>
-                    <input type="date" id="expense-date" name="expense-date" style="color: grey;" required>
-                    <label for="expense-cost">Amount Spent:</label>
-                    <input type="number" id="expense-cost" name="expense-cost" step="any" value="0.00" style="width: 200px; color: grey;" required>
-                    <label for="expense-type">Expense Type:</label>
-                    <select id="expense-type" name="expense-type" style="width: 200px;" required></select>
-                    <button type="submit" id="submit-expense">Submit</button>
+                    <input type="date" id="expense-date" name="expense-date" style="color: grey; width: 200px; text-align: right;" required>
+                    <input type="number" id="expense-cost" name="expense-cost" step="any" value="0.00" style="width: 200px; color: grey; text-align: right;" required>
+                    <select id="expense-type" name="expense-type" style="width: 300px;" required></select>
+                    <button type="submit" id="submit-expense" style="width: 200px;">Submit</button>
                 </div>                
             </form>
             <div id="expense-message"></div>
         </div>
+        <h3>Monthly Tracking</h3>
         <button type="button" id="process-expenses-btn">Process Last Month</button>
         <button type="button" id="process-current-expenses-btn">Process This Month</button>
         <button type="button" onclick="window.location.href='expensegraph.html'">Trends</button>
-
-        <h2>Budgeting</h2>
-        <label>Starting Balance:</label>
-        <input type="number" id="balanceInput" name="balanceInput" value="0">
         <br><br>
-        <button id="recalcButton">Calculate Balance Projection</button>
+        <h3>Budget Projection</h3>
+        <label>Starting Balance:</label>
+        <input type="number" id="balanceInput" name="balanceInput" style="text-align: right;" value="0">
+        <button id="recalcButton">Calculate</button>
         <br>
-        <h2>Transactions</h2>
+        <h3>Transactions</h3>
         <div id="txBucket">
             <ul id="txList" class=""></ul>
         </div>
