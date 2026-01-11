@@ -233,23 +233,40 @@ async function updateMediaItem(newValue, action = 'save') {
     }
 
     let updateData = {};
+    let journalUnits = 0;
+    let shouldFinish = false;
 
     if (action === 'save') {
         const newPage = parseInt(newValue, 10);
         if (isNaN(newPage) || newPage < 0 || newPage > (mediaItem.totalPages || 1)) {
-            alert(`Please enter a valid value between 0 and ${mediaItem.totalPages || 1}.`);
+            alert(`Please enter a valid value between 0 and ${mediaItem.totalPages || 1}. `);
             return;
         }
-        updateData.current_units = newPage;
+        
+        // Calculate units difference for journal entry
+        journalUnits = newPage - (mediaItem.currentPage || 0);
+        
+        updateData. current_units = newPage;
         updateData.percentage_complete = calculatePercentage(newPage, mediaItem.totalPages || 1);
+        
+        // Check if units entered equals total units (auto-finish)
+        if (newPage === (mediaItem.totalPages || 1)) {
+            shouldFinish = true;
+            updateData.status = MediaStatus.COMPLETED;
+            updateData.date_finished = new Date().toISOString().split('T')[0];
+        }
     } else if (action === 'finish') {
+        // Calculate units difference for journal entry
+        journalUnits = (mediaItem.totalPages || 1) - (mediaItem.currentPage || 0);
+        
         updateData.current_units = mediaItem.totalPages || 1;
         updateData.percentage_complete = 100;
-        updateData.status = MediaStatus.COMPLETED;
+        updateData.status = MediaStatus. COMPLETED;
         updateData.date_finished = new Date().toISOString().split('T')[0];
+        shouldFinish = true;
     } else if (action === 'dnf') {
-        updateData.status = MediaStatus.ABANDONED;
-        // Keep current progress
+        updateData.status = MediaStatus. ABANDONED;
+        // Keep current progress, no journal entry for DNF
     }
 
     try {
@@ -261,12 +278,28 @@ async function updateMediaItem(newValue, action = 'save') {
 
         if (error) {
             console.error('Error updating media status:', error);
-            alert('Error updating progress: ' + error.message);
+            alert('Error updating progress:  ' + error.message);
             return;
         }
 
+        // Add journal entry if units changed (for save or finish actions)
+        if ((action === 'save' || action === 'finish') && journalUnits !== 0) {
+            const { error:  journalError } = await supabase
+                .from('lu_journal_entry')
+                .insert([{
+                    media_status_id: mediaItem.statusId,
+                    units: journalUnits
+                }]);
+
+            if (journalError) {
+                console.error('Error creating journal entry:', journalError);
+                // Don't alert here - the update was successful, this is just logging progress
+                console.warn('Journal entry creation failed, but media status was updated');
+            }
+        }
+
         // If status changed to completed or abandoned, reload to remove from in-progress list
-        if (action === 'finish' || action === 'dnf') {
+        if (action === 'finish' || action === 'dnf' || shouldFinish) {
             await loadTrackedMedia();
         } else {
             // Just reload to refresh the display
