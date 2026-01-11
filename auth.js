@@ -18,6 +18,7 @@ authContainer.innerHTML = `\
   <button id="login-btn">Login</button>
   <button id="signup-btn">Sign Up</button>
   <button id="logout-btn" style="display:none;">Logout</button>
+  <button id="media-tracker-btn" style="display:none;" onclick="window.location.href='./MediaTracker/index.html'">Media Tracker</button>
   <br><br>
 `
 document.body.prepend(authContainer)
@@ -25,13 +26,14 @@ document.body.prepend(authContainer)
 const loginBtn = document.getElementById('login-btn')
 const signupBtn = document.getElementById('signup-btn')
 const logoutBtn = document.getElementById('logout-btn')
+const mediaTrackerBtn = document.getElementById('media-tracker-btn')
 const authMessage = document.getElementById('auth-message')
 
 // Login
 loginBtn.addEventListener('click', async () => {
   const email = document.getElementById('email').value
   const password = document.getElementById('password').value
-  const { error } = await supabase.auth.signInWithPassword({ email, password })
+  const { error } = await supabase.auth. signInWithPassword({ email, password })
   if (error) {
     authMessage.textContent = error.message
   }
@@ -39,7 +41,7 @@ loginBtn.addEventListener('click', async () => {
 
 // Sign up
 signupBtn.addEventListener('click', async () => {
-  const email = document.getElementById('email').value
+  const email = document. getElementById('email').value
   const password = document.getElementById('password').value
   const { error } = await supabase.auth.signUp({ email, password })
   if (error) {
@@ -57,10 +59,11 @@ logoutBtn.addEventListener('click', async () => {
 // Auth state change
 supabase.auth.onAuthStateChange((event, session) => {
   if (session) {
-    // Hide login form, show logout
+    // Hide login form, show logout and media tracker
     loginBtn.style.display = 'none'
     signupBtn.style.display = 'none'
     logoutBtn.style.display = 'inline-block'
+    mediaTrackerBtn.style.display = 'inline-block'
     document.getElementById('divEmail').style.display = 'none'
     document.getElementById('divPassword').style.display = 'none'
 
@@ -70,10 +73,11 @@ supabase.auth.onAuthStateChange((event, session) => {
     mod.initApp(supabase);
   }).catch(err => console.error('Failed to load main.js', err));
   } else {
-    // Show login form, hide logout
+    // Show login form, hide logout and media tracker
     loginBtn.style.display = 'inline-block'
     signupBtn.style.display = 'inline-block'
     logoutBtn.style.display = 'none'
+    mediaTrackerBtn.style.display = 'none'
     document.getElementById('divEmail').style.display = ''
     document.getElementById('divPassword').style.display = ''
     authMessage.textContent = ''
