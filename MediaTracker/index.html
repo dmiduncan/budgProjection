@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Media Tracker</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <style>
+        .media-container {
+            border: solid 1px rgba(212, 212, 255, 0.1);
+            padding: 1.5em;
+            margin-bottom: 1.5em;
+            display: flex;
+            gap: 1.5em;
+            align-items: flex-start;
+        }
+
+        .media-image {
+            width: 120px;
+            height: 180px;
+            object-fit: cover;
+            border: solid 1px rgba(212, 212, 255, 0.1);
+            flex-shrink: 0;
+        }
+
+        .media-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5em;
+        }
+
+        .media-title-row {
+            display: flex;
+            gap: 1em;
+            align-items: baseline;
+            margin-bottom: 0.5em;
+            flex-wrap: wrap;
+        }
+
+        .media-title {
+            font-size: 1.35em;
+            font-weight: 600;
+        }
+
+        .media-writer {
+            font-size: 1em;
+            color: rgba(244, 244, 255, 0.8);
+            font-weight: 300;
+        }
+
+        .media-details-row {
+            display: flex;
+            gap: 1.5em;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .media-details-row-2 {
+            display: flex;
+            gap: 1.5em;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-top: 0.5em;
+        }
+
+        .media-detail {
+            font-size: 0.9em;
+            color: rgba(244, 244, 255, 0.8);
+        }
+
+        .media-detail strong {
+            color: #ffffff;
+            font-weight: 600;
+        }
+
+        .progress-container {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .progress-bar-wrapper {
+            background: rgba(212, 212, 255, 0.035);
+            height: 1.5em;
+            border: solid 1px rgba(212, 212, 255, 0.1);
+            position: relative;
+            margin-top: 0.5em;
+        }
+
+        .progress-bar {
+            background: #9bf1ff;
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 0.8em;
+            font-weight: 600;
+            color: #ffffff;
+            z-index: 1;
+        }
+
+        .update-button {
+            margin-top: 1em;
+        }
+
+        .search-container {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            margin-bottom: 2em;
+            flex-wrap: wrap;
+        }
+
+        .search-input {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        #media-list {
+            margin-top: 2em;
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #2a2f4a;
+            border: solid 1px rgba(212, 212, 255, 0.1);
+            padding: 2em;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-content h3 {
+            margin-top: 0;
+            margin-bottom: 1.5em;
+        }
+
+        .modal-field {
+            margin-bottom: 1.5em;
+        }
+
+        .modal-field label {
+            display: block;
+            margin-bottom: 0.5em;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+
+        .modal-field input {
+            width: 100%;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 1em;
+            flex-wrap: wrap;
+            margin-top: 2em;
+        }
+
+        .modal-buttons .button {
+            flex: 1;
+            min-width: 120px;
+        }
+
+        /* Search Results Modal */
+        .search-results-modal .modal-content {
+            max-width: 700px;
+        }
+
+        .search-result-item {
+            border: solid 1px rgba(212, 212, 255, 0.1);
+            padding: 1em;
+            margin-bottom: 1em;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1em;
+        }
+
+        .search-result-info {
+            flex: 1;
+        }
+
+        .search-result-title {
+            font-size: 1.1em;
+            font-weight: 600;
+            margin-bottom: 0.25em;
+        }
+
+        .search-result-details {
+            font-size: 0.9em;
+            color: rgba(244, 244, 255, 0.8);
+        }
+
+        .search-result-details strong {
+            color: #ffffff;
+            font-weight: 600;
+        }
+
+        .search-result-item .button {
+            flex-shrink: 0;
+        }
+
+        .search-results-list {
+            max-height: 60vh;
+            overflow-y: auto;
+            margin-bottom: 1em;
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 2em;
+            color: rgba(244, 244, 255, 0.6);
+        }
+    </style>
+</head>
+<body>
+    <div id="app-container" style="padding: 2em;">
+        <h3>Media Tracker</h3>
+        
+        <div class="search-container">
+            <button type="button" id="add-media-btn" class="button">Add Media</button>
+            <input type="text" id="search-input" class="search-input" placeholder="Search for media...">
+            <button type="button" id="search-btn" class="button">Search</button>
+        </div>
+
+        <div id="media-list">
+            <!-- Media items will be dynamically inserted here -->
+        </div>
+    </div>
+
+    <!-- Update Modal -->
+    <div id="update-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>Update Progress</h3>
+            <div class="modal-field">
+                <label id="current-progress-label">Current Page/Episode:</label>
+                <div id="current-progress-value" style="padding: 0.5em; background: rgba(212, 212, 255, 0.035); border: solid 1px rgba(212, 212, 255, 0.1); margin-top: 0.5em;">
+                    <!-- Current value will be inserted here -->
+                </div>
+            </div>
+            <div class="modal-field">
+                <label for="modal-update-input">New Page/Episode:</label>
+                <input type="number" id="modal-update-input" min="0" placeholder="Enter new value">
+            </div>
+            <div class="modal-buttons">
+                <button type="button" class="button" id="modal-save-btn">Save</button>
+                <button type="button" class="button" id="modal-finish-btn">Finish</button>
+                <button type="button" class="button" id="modal-dnf-btn">DNF</button>
+                <button type="button" class="button" id="modal-cancel-btn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search Results Modal -->
+    <div id="search-modal" class="modal-overlay search-results-modal">
+        <div class="modal-content">
+            <h3>Search Results</h3>
+            <div id="search-results-list" class="search-results-list">
+                <!-- Search results will be inserted here -->
+            </div>
+            <div class="modal-buttons">
+                <button type="button" class="button" id="search-modal-close-btn">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="media-tracker.js"></script>
+</body>
+</html>

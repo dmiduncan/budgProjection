@@ -1,0 +1,806 @@
+// media-tracker.js
+// Supabase configuration for MediaTracker (different project)
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.86.0/+esm'
+
+// MediaTracker Supabase project credentials
+const mediaTrackerSupabaseUrl = 'https://fscgyzqjjdwfzauzttek.supabase.co';
+const mediaTrackerSupabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZzY2d5enFqamR3ZnphdXp0dGVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc3NDE0NjYsImV4cCI6MjA4MzMxNzQ2Nn0.lKwSixf1KK6RWSZvZvHb-BSpQx2pZirkUKIBGpGsf6s';
+
+// Create Supabase client for MediaTracker
+const supabase = createClient(mediaTrackerSupabaseUrl, mediaTrackerSupabaseKey);
+
+// Media Status Enumeration
+const MediaStatus = {
+    PLANNED: 'planned',
+    IN_PROGRESS: 'in progress',
+    COMPLETED: 'completed',
+    ABANDONED: 'abandoned',
+    ON_HOLD: 'on hold'
+};
+
+// Calculate percentage helper
+function calculatePercentage(current, total) {
+    if (!total || total === 0) return 0;
+    return Math.round((current / total) * 100);
+}
+
+// Get OpenLibrary cover URL for books
+function getOpenLibraryCoverUrl(isbn, size = 'M') {
+    if (!isbn) return null;
+    // Remove any dashes or spaces from ISBN
+    const cleanIsbn = isbn.replace(/[-\s]/g, '');
+    return `https://covers.openlibrary.org/b/isbn/${cleanIsbn}-${size}.jpg`;
+}
+
+// Get image URL for media item
+function getMediaImageUrl(media) {
+    // Prioritize cover_art_url from database if it exists
+    if (media.imageUrl || media.cover_art_url) {
+        return media.imageUrl || media.cover_art_url;
+    }
+    // For books, try OpenLibrary if ISBN is available
+    if (media.mediaType === "Book" && media.isbn) {
+        return getOpenLibraryCoverUrl(media.isbn, 'M');
+    }
+    // Return null to trigger blank image
+    return null;
+}
+
+// Dummy media data for v1
+const dummyMediaData = [
+    {
+        id: 1,
+        title: "The Great Gatsby",
+        writer: "F. Scott Fitzgerald",
+        status: "In Progress",
+        mediaType: "Book",
+        currentPage: 90,
+        totalPages: 200,
+        isbn: "9780743273565",
+        imageUrl: "https://via.placeholder.com/120x180?text=The+Great+Gatsby"
+    },
+    {
+        id: 2,
+        title: "Inception",
+        writer: "Christopher Nolan",
+        status: "Completed",
+        mediaType: "Movie",
+        currentPage: 1,
+        totalPages: 1,
+        imageUrl: "https://via.placeholder.com/120x180?text=Inception"
+    },
+    {
+        id: 3,
+        title: "Breaking Bad",
+        writer: "Vince Gilligan",
+        status: "In Progress",
+        mediaType: "TV Show",
+        currentPage: 30,
+        totalPages: 50,
+        imageUrl: "https://via.placeholder.com/120x180?text=Breaking+Bad"
+    },
+    {
+        id: 4,
+        title: "1984",
+        writer: "George Orwell",
+        status: "Not Started",
+        mediaType: "Book",
+        currentPage: 0,
+        totalPages: 328,
+        isbn: "9780452284234",
+        imageUrl: "https://via.placeholder.com/120x180?text=1984"
+    },
+    {
+        id: 5,
+        title: "The Dark Knight",
+        writer: "Christopher Nolan",
+        status: "Completed",
+        mediaType: "Movie",
+        currentPage: 1,
+        totalPages: 1,
+        imageUrl: "https://via.placeholder.com/120x180?text=The+Dark+Knight"
+    },
+    {
+        id: 6,
+        title: "Dune",
+        writer: "Frank Herbert",
+        status: "In Progress",
+        mediaType: "Book",
+        currentPage: 150,
+        totalPages: 500,
+        isbn: "9780441013593",
+        imageUrl: "https://via.placeholder.com/120x180?text=Dune"
+    }
+];
+
+// Calculate percentages for all items
+dummyMediaData.forEach(item => {
+    item.percentageComplete = calculatePercentage(item.currentPage, item.totalPages);
+});
+
+// All available media database (for searching)
+// This would typically come from an API or larger database
+const allAvailableMedia = [
+    ...dummyMediaData,
+    {
+        id: 7,
+        title: "To Kill a Mockingbird",
+        writer: "Harper Lee",
+        mediaType: "Book",
+        isbn: "9780061120084",
+        totalPages: 376
+    },
+    {
+        id: 8,
+        title: "The Lord of the Rings",
+        writer: "J.R.R. Tolkien",
+        mediaType: "Book",
+        isbn: "9780544003415",
+        totalPages: 1178
+    },
+    {
+        id: 9,
+        title: "Pride and Prejudice",
+        writer: "Jane Austen",
+        mediaType: "Book",
+        isbn: "9780141439518",
+        totalPages: 432
+    },
+    {
+        id: 10,
+        title: "The Matrix",
+        writer: "The Wachowskis",
+        mediaType: "Movie",
+        totalPages: 1
+    },
+    {
+        id: 11,
+        title: "Game of Thrones",
+        writer: "David Benioff",
+        mediaType: "TV Show",
+        totalPages: 73
+    },
+    {
+        id: 12,
+        title: "The Catcher in the Rye",
+        writer: "J.D. Salinger",
+        mediaType: "Book",
+        isbn: "9780316769174",
+        totalPages: 234
+    },
+    {
+        id: 13,
+        title: "The Office",
+        writer: "Greg Daniels",
+        mediaType: "TV Show",
+        totalPages: 201
+    },
+    {
+        id: 14,
+        title: "Interstellar",
+        writer: "Christopher Nolan",
+        mediaType: "Movie",
+        totalPages: 1
+    }
+];
+
+let currentMediaData = []; // Will be loaded from lu_media_status
+let currentModalMediaId = null;
+let currentSearchResults = []; // Store current search results for tracking
+let trackedMediaIds = new Set(); // Track which media_ids are already tracked as "in progress"
+
+// Load tracked media from lu_media_status
+async function loadTrackedMedia() {
+    try {
+        // Get all media_status records with status = "in progress"
+        const { data: statusData, error: statusError } = await supabase
+            .from('lu_media_status')
+            .select('*')
+            .eq('status', MediaStatus.IN_PROGRESS);
+
+        if (statusError) {
+            console.error('Error loading media status:', statusError);
+            alert('Error loading tracked media: ' + statusError.message);
+            return;
+        }
+
+        if (!statusData || statusData.length === 0) {
+            console.log('No in-progress media found');
+            currentMediaData = [];
+            trackedMediaIds.clear();
+            renderMediaItems([]);
+            return;
+        }
+
+        // Get media_ids to fetch from lu_media
+        const mediaIds = statusData.map(s => s.media_id);
+        trackedMediaIds = new Set(mediaIds);
+
+        // Fetch media details from lu_media
+        const { data: mediaData, error: mediaError } = await supabase
+            .from('lu_media')
+            .select('*')
+            .in('id', mediaIds);
+
+        if (mediaError) {
+            console.error('Error loading media details:', mediaError);
+            alert('Error loading media details: ' + mediaError.message);
+            return;
+        }
+
+        // Combine status data with media data
+        currentMediaData = statusData.map(statusItem => {
+            const mediaItem = mediaData.find(m => m.id === statusItem.media_id);
+            if (!mediaItem) {
+                console.warn('Media not found for status item:', statusItem);
+                return null;
+            }
+
+            // Map to our app structure
+            return {
+                id: mediaItem.id,
+                statusId: statusItem.id, // Store the status record ID for updates
+                title: mediaItem.text || mediaItem.title || mediaItem.name || '',
+                writer: mediaItem.writer || '',
+                mediaType: mediaItem.media_type || mediaItem.mediaType || '',
+                totalPages: mediaItem.num_units || mediaItem.numUnits || 1,
+                currentPage: statusItem.current_units || 0,
+                percentageComplete: statusItem.percentage_complete || calculatePercentage(statusItem.current_units || 0, mediaItem.num_units || 1),
+                status: MediaStatus.IN_PROGRESS,
+                imageUrl: mediaItem.cover_art_url || mediaItem.coverArtUrl || null,
+                format: mediaItem.format || null,
+                rating: statusItem.rating || null,
+                dateStarted: statusItem.date_started || null,
+                dateFinished: statusItem.date_finished || null
+            };
+        }).filter(item => item !== null); // Remove any null entries
+
+        console.log('Loaded tracked media:', currentMediaData);
+        renderMediaItems(currentMediaData);
+    } catch (err) {
+        console.error('Error in loadTrackedMedia:', err);
+        alert('Error loading tracked media: ' + (err.message || err));
+    }
+}
+
+// Get progress label based on media type
+function getProgressLabel(mediaType) {
+    if (mediaType === "Book") {
+        return "Page";
+    } else if (mediaType === "TV Show") {
+        return "Episode";
+    } else {
+        return "Progress";
+    }
+}
+
+
+// Render media items
+function renderMediaItems(mediaArray) {
+    const mediaList = document.getElementById('media-list');
+    if (!mediaList) return;
+
+    mediaList.innerHTML = '';
+
+    if (mediaArray.length === 0) {
+        mediaList.innerHTML = '<p>No media found.</p>';
+        return;
+    }
+
+    mediaArray.forEach(media => {
+        const container = document.createElement('div');
+        container.className = 'media-container';
+        container.dataset.mediaId = media.id;
+
+        const progressLabel = getProgressLabel(media.mediaType);
+        const currentValue = media.currentPage || 0;
+        const totalValue = media.totalPages || 1;
+        const imageUrl = getMediaImageUrl(media);
+        const imgSrc = imageUrl || '';
+
+        container.innerHTML = `
+            <img src="${imgSrc}" alt="${media.title}" class="media-image" onerror="this.style.display='none';" ${!imgSrc ? 'style="display:none;"' : ''}>
+            <div class="media-info">
+                <div class="media-title-row">
+                    <div class="media-title">${media.title}</div>
+                    <div class="media-writer">${media.writer}</div>
+                </div>
+                <div class="media-details-row">
+                    <div class="media-detail"><strong>Status:</strong> ${media.status}</div>
+                    <div class="media-detail"><strong>Type:</strong> ${media.mediaType}</div>
+                </div>
+                <div class="media-details-row-2">
+                    <div class="media-detail"><strong>Progress:</strong> ${media.percentageComplete}%</div>
+                    <div class="progress-container">
+                        <div class="progress-bar-wrapper">
+                            <div class="progress-bar" style="width: ${media.percentageComplete}%"></div>
+                            <div class="progress-text">${media.percentageComplete}%</div>
+                        </div>
+                    </div>
+                </div>
+                <button type="button" 
+                        class="button update-button" 
+                        onclick="openUpdateModal(${media.id})">
+                    Update
+                </button>
+            </div>
+        `;
+
+        mediaList.appendChild(container);
+    });
+}
+
+// Open update modal
+function openUpdateModal(mediaId) {
+    const mediaItem = currentMediaData.find(m => m.id === mediaId);
+    if (!mediaItem) return;
+
+    currentModalMediaId = mediaId;
+    const modal = document.getElementById('update-modal');
+    const progressLabel = document.getElementById('current-progress-label');
+    const progressValue = document.getElementById('current-progress-value');
+    const updateInput = document.getElementById('modal-update-input');
+
+    const progressLabelText = getProgressLabel(mediaItem.mediaType);
+    progressLabel.textContent = `Current ${progressLabelText}:`;
+    progressValue.textContent = `${mediaItem.currentPage || 0} / ${mediaItem.totalPages || 1}`;
+    updateInput.value = '';
+    updateInput.placeholder = `Enter new ${progressLabelText.toLowerCase()}`;
+    updateInput.min = 0;
+    updateInput.max = mediaItem.totalPages || 1;
+
+    modal.classList.add('active');
+    updateInput.focus();
+}
+
+// Close update modal
+function closeUpdateModal() {
+    const modal = document.getElementById('update-modal');
+    modal.classList.remove('active');
+    currentModalMediaId = null;
+}
+
+// Update media item with new value
+async function updateMediaItem(newValue, action = 'save') {
+    if (currentModalMediaId === null) return;
+
+    const mediaItem = currentMediaData.find(m => m.id === currentModalMediaId);
+    if (!mediaItem || !mediaItem.statusId) {
+        alert('Media item not found or not properly tracked.');
+        return;
+    }
+
+    let updateData = {};
+
+    if (action === 'save') {
+        const newPage = parseInt(newValue, 10);
+        if (isNaN(newPage) || newPage < 0 || newPage > (mediaItem.totalPages || 1)) {
+            alert(`Please enter a valid value between 0 and ${mediaItem.totalPages || 1}.`);
+            return;
+        }
+        updateData.current_units = newPage;
+        updateData.percentage_complete = calculatePercentage(newPage, mediaItem.totalPages || 1);
+    } else if (action === 'finish') {
+        updateData.current_units = mediaItem.totalPages || 1;
+        updateData.percentage_complete = 100;
+        updateData.status = MediaStatus.COMPLETED;
+        updateData.date_finished = new Date().toISOString().split('T')[0];
+    } else if (action === 'dnf') {
+        updateData.status = MediaStatus.ABANDONED;
+        // Keep current progress
+    }
+
+    try {
+        // Update lu_media_status table
+        const { error } = await supabase
+            .from('lu_media_status')
+            .update(updateData)
+            .eq('id', mediaItem.statusId);
+
+        if (error) {
+            console.error('Error updating media status:', error);
+            alert('Error updating progress: ' + error.message);
+            return;
+        }
+
+        // If status changed to completed or abandoned, reload to remove from in-progress list
+        if (action === 'finish' || action === 'dnf') {
+            await loadTrackedMedia();
+        } else {
+            // Just reload to refresh the display
+            await loadTrackedMedia();
+        }
+
+        closeUpdateModal();
+    } catch (err) {
+        console.error('Error in updateMediaItem:', err);
+        alert('Error updating progress: ' + (err.message || err));
+    }
+}
+
+// Open search results modal
+async function openSearchModal() {
+    const searchInput = document.getElementById('search-input');
+    if (!searchInput) return;
+
+    const searchTerm = searchInput.value.trim();
+
+    if (searchTerm === '') {
+        alert('Please enter a search term.');
+        return;
+    }
+
+    try {
+        // Query Supabase lu_media table
+        // Get all records and filter in JavaScript to avoid column name issues
+        console.log('Searching for:', searchTerm);
+        console.log('Supabase client:', supabase);
+        console.log('Supabase URL:', mediaTrackerSupabaseUrl);
+        
+        // Test the connection first
+        const { data: testData, error: testError } = await supabase
+            .from('lu_media')
+            .select('*')
+            .limit(1);
+
+        if (testError) {
+            console.error('Database connection error:', testError);
+            console.error('Error details:', {
+                message: testError.message,
+                details: testError.details,
+                hint: testError.hint,
+                code: testError.code
+            });
+            alert(`Error connecting to database: ${testError.message}\n\nThis might be due to:\n- Row Level Security (RLS) policies\n- Table permissions\n- Authentication required\n\nCheck the console for more details.`);
+            return;
+        }
+
+        console.log('Connection test successful. Test data:', testData);
+        
+        // Now get all records
+        const { data, error } = await supabase
+            .from('lu_media')
+            .select('*');
+
+        if (error) {
+            console.error('Error fetching media:', error);
+            console.error('Error details:', {
+                message: error.message,
+                details: error.details,
+                hint: error.hint,
+                code: error.code
+            });
+            alert('Error fetching media: ' + error.message);
+            return;
+        }
+
+        console.log('Total records fetched:', data?.length || 0);
+        console.log('Raw data:', data);
+
+        // Debug: Log first record to see actual column names
+        if (data && data.length > 0) {
+            console.log('Sample record from database:', data[0]);
+            console.log('Available columns:', Object.keys(data[0]));
+            
+            // Log all column values for first record
+            Object.keys(data[0]).forEach(key => {
+                console.log(`  ${key}:`, data[0][key], `(type: ${typeof data[0][key]})`);
+            });
+        } else {
+            console.warn('No data returned from database');
+            displaySearchResults([], searchTerm);
+            return;
+        }
+
+        // Filter results in JavaScript
+        // Case-insensitive search with wildcards on either side (using includes)
+        const searchLower = searchTerm.toLowerCase().trim();
+        console.log('Search term (lowercase):', searchLower);
+        
+        const filteredData = (data || []).filter(dbItem => {
+            // Try multiple possible column names for title
+            const titleField = String(dbItem.text || dbItem.title || dbItem.name || dbItem.media_text || '').toLowerCase();
+            const writerField = String(dbItem.writer || dbItem.author || '').toLowerCase();
+            const mediaTypeField = String(dbItem.media_type || dbItem.mediaType || dbItem.type || '').toLowerCase();
+            
+            console.log('Checking item:', {
+                id: dbItem.id,
+                titleField,
+                writerField,
+                mediaTypeField,
+                searchTerm: searchLower
+            });
+            
+            // Case-insensitive matching (allows wildcards on either side via includes)
+            const matches = titleField.includes(searchLower) ||
+                          writerField.includes(searchLower) ||
+                          mediaTypeField.includes(searchLower);
+            
+            if (matches) {
+                console.log('Match found:', dbItem);
+            }
+            
+            return matches;
+        });
+
+        console.log(`Search for "${searchTerm}" returned ${filteredData.length} results from ${data?.length || 0} total records`);
+
+        // Map database columns to app structure
+        // Try different possible column names for title/text
+        const searchResults = filteredData.map(dbItem => ({
+            id: dbItem.id,
+            title: dbItem.text || dbItem.title || dbItem.name || '',
+            writer: dbItem.writer || '',
+            mediaType: dbItem.media_type || dbItem.mediaType || '',
+            totalPages: dbItem.num_units || dbItem.numUnits || 1,
+            imageUrl: dbItem.cover_art_url || dbItem.coverArtUrl || null,
+            format: dbItem.format || null
+        }));
+
+        // Store search results for tracking
+        currentSearchResults = searchResults;
+        
+        // Update trackedMediaIds set for search results
+        // Check which of these are already tracked
+        const trackedIds = new Set();
+        if (trackedMediaIds.size > 0) {
+            searchResults.forEach(item => {
+                if (trackedMediaIds.has(item.id)) {
+                    trackedIds.add(item.id);
+                }
+            });
+        }
+
+        // Display results in modal
+        displaySearchResults(searchResults, searchTerm);
+    } catch (err) {
+        console.error('Error in search:', err);
+        alert('Error searching media: ' + (err.message || err));
+    }
+}
+
+// Display search results in modal
+function displaySearchResults(results, searchTerm) {
+    const modal = document.getElementById('search-modal');
+    const resultsList = document.getElementById('search-results-list');
+    if (!modal || !resultsList) return;
+
+    resultsList.innerHTML = '';
+
+    if (results.length === 0) {
+        resultsList.innerHTML = `
+            <div class="no-results">
+                <p>No results found for "${searchTerm}"</p>
+            </div>
+        `;
+    } else {
+        results.forEach(media => {
+            const isTracked = trackedMediaIds.has(media.id);
+            const resultItem = document.createElement('div');
+            resultItem.className = 'search-result-item';
+            
+            resultItem.innerHTML = `
+                <div class="search-result-info">
+                    <div class="search-result-title">${media.title}</div>
+                    <div class="search-result-details">
+                        <strong>Writer:</strong> ${media.writer} | 
+                        <strong>Type:</strong> ${media.mediaType}
+                        ${isTracked ? ' | <span style="color: #9bf1ff;">(Already Tracked)</span>' : ''}
+                    </div>
+                </div>
+                <button type="button" 
+                        class="button" 
+                        ${isTracked ? 'disabled style="opacity: 0.5;"' : ''}
+                        onclick="trackMedia(${media.id})">
+                    ${isTracked ? 'Tracked' : 'Track'}
+                </button>
+            `;
+
+            resultsList.appendChild(resultItem);
+        });
+    }
+
+    modal.classList.add('active');
+}
+
+// Close search modal
+function closeSearchModal() {
+    const modal = document.getElementById('search-modal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+}
+
+// Track a media item (insert/update lu_media_status)
+async function trackMedia(mediaId) {
+    // Find the media item in current search results
+    const mediaItem = currentSearchResults.find(m => m.id === mediaId);
+    if (!mediaItem) {
+        alert('Media item not found. Please search again.');
+        return;
+    }
+
+    // Check if already tracked as "in progress"
+    if (trackedMediaIds.has(mediaId)) {
+        alert('This media is already being tracked as in progress.');
+        return;
+    }
+
+    try {
+        // Check if a status record exists for this media_id
+        const { data: existingStatus, error: checkError } = await supabase
+            .from('lu_media_status')
+            .select('*')
+            .eq('media_id', mediaId)
+            .single();
+
+        const statusData = {
+            media_id: mediaId,
+            status: MediaStatus.IN_PROGRESS,
+            current_units: 0,
+            percentage_complete: 0,
+            date_started: new Date().toISOString().split('T')[0] // Today's date in YYYY-MM-DD format
+        };
+
+        let result;
+        if (existingStatus && !checkError) {
+            // Update existing record
+            const { data, error } = await supabase
+                .from('lu_media_status')
+                .update(statusData)
+                .eq('id', existingStatus.id)
+                .select()
+                .single();
+
+            if (error) {
+                console.error('Error updating media status:', error);
+                alert('Error updating media status: ' + error.message);
+                return;
+            }
+            result = data;
+        } else {
+            // Insert new record
+            const { data, error } = await supabase
+                .from('lu_media_status')
+                .insert([statusData])
+                .select()
+                .single();
+
+            if (error) {
+                console.error('Error inserting media status:', error);
+                alert('Error tracking media: ' + error.message);
+                return;
+            }
+            result = data;
+        }
+
+        // Add to tracked set
+        trackedMediaIds.add(mediaId);
+
+        // Reload tracked media to refresh the display
+        await loadTrackedMedia();
+
+        // Update search results to show it's now tracked
+        const searchInput = document.getElementById('search-input');
+        if (searchInput && searchInput.value.trim() !== '') {
+            openSearchModal(); // Refresh search results
+        } else {
+            closeSearchModal();
+        }
+    } catch (err) {
+        console.error('Error in trackMedia:', err);
+        alert('Error tracking media: ' + (err.message || err));
+    }
+}
+
+// Initialize the page
+function initMediaTracker() {
+    // Add Media button
+    const addMediaBtn = document.getElementById('add-media-btn');
+    if (addMediaBtn) {
+        addMediaBtn.addEventListener('click', () => {
+            alert('Add Media functionality will be implemented in a future version.');
+        });
+    }
+
+    // Search button
+    const searchBtn = document.getElementById('search-btn');
+    if (searchBtn) {
+        searchBtn.addEventListener('click', openSearchModal);
+    }
+
+    // Search on Enter key
+    const searchInput = document.getElementById('search-input');
+    if (searchInput) {
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                openSearchModal();
+            }
+        });
+    }
+
+    // Modal buttons
+    const modalSaveBtn = document.getElementById('modal-save-btn');
+    const modalFinishBtn = document.getElementById('modal-finish-btn');
+    const modalDnfBtn = document.getElementById('modal-dnf-btn');
+    const modalCancelBtn = document.getElementById('modal-cancel-btn');
+    const modalUpdateInput = document.getElementById('modal-update-input');
+
+    if (modalSaveBtn) {
+        modalSaveBtn.addEventListener('click', () => {
+            const value = modalUpdateInput.value;
+            if (!value || value.trim() === '') {
+                alert('Please enter a value.');
+                return;
+            }
+            updateMediaItem(value, 'save');
+        });
+    }
+
+    if (modalFinishBtn) {
+        modalFinishBtn.addEventListener('click', () => {
+            updateMediaItem(null, 'finish');
+        });
+    }
+
+    if (modalDnfBtn) {
+        modalDnfBtn.addEventListener('click', () => {
+            updateMediaItem(null, 'dnf');
+        });
+    }
+
+    if (modalCancelBtn) {
+        modalCancelBtn.addEventListener('click', () => {
+            closeUpdateModal();
+        });
+    }
+
+    // Close modal on overlay click
+    const modal = document.getElementById('update-modal');
+    if (modal) {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeUpdateModal();
+            }
+        });
+    }
+
+    // Allow Enter key in modal input to save
+    if (modalUpdateInput) {
+        modalUpdateInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                modalSaveBtn.click();
+            }
+        });
+    }
+
+    // Search modal close button
+    const searchModalCloseBtn = document.getElementById('search-modal-close-btn');
+    if (searchModalCloseBtn) {
+        searchModalCloseBtn.addEventListener('click', closeSearchModal);
+    }
+
+    // Close search modal on overlay click
+    const searchModal = document.getElementById('search-modal');
+    if (searchModal) {
+        searchModal.addEventListener('click', (e) => {
+            if (e.target === searchModal) {
+                closeSearchModal();
+            }
+        });
+    }
+
+    // Load tracked media on page load
+    loadTrackedMedia();
+}
+
+// Make functions available globally for onclick handlers
+window.openUpdateModal = openUpdateModal;
+window.trackMedia = trackMedia;
+
+// Initialize when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initMediaTracker);
+} else {
+    initMediaTracker();
+}
