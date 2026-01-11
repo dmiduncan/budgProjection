@@ -559,15 +559,33 @@ async function openSearchModal() {
     }
 }
 
+// Add this helper function to get unit label and display
+function getUnitLabel(mediaType) {
+    const typeMap = {
+        'book':  'pages',
+        'manga': 'chapters',
+        'tv show': 'episodes',
+        'anime': 'episodes',
+        'movie': 'minutes'
+    };
+    const normalizedType = (mediaType || '').toLowerCase().trim();
+    return typeMap[normalizedType] || 'units';
+}
+
+function formatUnitDisplay(mediaType, totalUnits) {
+    const label = getUnitLabel(mediaType);
+    return `${totalUnits} ${label}`;
+}
+
 // Display search results in modal
 function displaySearchResults(results, searchTerm) {
-    const modal = document.getElementById('search-modal');
+    const modal = document. getElementById('search-modal');
     const resultsList = document.getElementById('search-results-list');
     if (!modal || !resultsList) return;
 
     resultsList.innerHTML = '';
 
-    if (results.length === 0) {
+    if (results. length === 0) {
         resultsList.innerHTML = `
             <div class="no-results">
                 <p>No results found for "${searchTerm}"</p>
@@ -575,16 +593,20 @@ function displaySearchResults(results, searchTerm) {
         `;
     } else {
         results.forEach(media => {
-            const isTracked = trackedMediaIds.has(media.id);
+            const isTracked = trackedMediaIds.has(media. id);
             const resultItem = document.createElement('div');
             resultItem.className = 'search-result-item';
+            
+            const unitLabel = getUnitLabel(media. mediaType);
+            const capitalizedLabel = unitLabel.charAt(0).toUpperCase() + unitLabel.slice(1);
             
             resultItem.innerHTML = `
                 <div class="search-result-info">
                     <div class="search-result-title">${media.title}</div>
                     <div class="search-result-details">
                         <strong>Writer:</strong> ${media.writer} | 
-                        <strong>Type:</strong> ${media.mediaType}
+                        <strong>Type:</strong> ${media.mediaType} | 
+                        <strong>${capitalizedLabel}:</strong> ${media.totalPages}
                         ${isTracked ? ' | <span style="color: #9bf1ff;">(Already Tracked)</span>' : ''}
                     </div>
                 </div>
