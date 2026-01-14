@@ -202,10 +202,12 @@ function openUpdateModal(mediaId) {
     const progressLabel = document.getElementById('current-progress-label');
     const progressValue = document.getElementById('current-progress-value');
     const updateInput = document.getElementById('modal-update-input');
+    const updateLabel = document.getElementById('modal-update-label');
 
-    const progressLabelText = getProgressLabel(mediaItem.mediaType);
+    const progressLabelText = getUnitLabel(mediaItem.mediaType);
     progressLabel.textContent = `Current ${progressLabelText}: `;
     progressValue.textContent = `${mediaItem.currentPage || 0} / ${mediaItem.totalPages || 1}`;
+    updateLabel.textContent = `New ${progressLabelText}: `;
     updateInput.value = mediaItem.currentPage || 0;  // Set input value to current units
     updateInput.placeholder = `Enter new ${progressLabelText. toLowerCase()}`;
     updateInput.min = 0;
