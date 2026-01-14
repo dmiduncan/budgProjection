@@ -204,10 +204,10 @@ function openUpdateModal(mediaId) {
     const updateInput = document.getElementById('modal-update-input');
 
     const progressLabelText = getProgressLabel(mediaItem.mediaType);
-    progressLabel.textContent = `Current ${progressLabelText}:`;
+    progressLabel.textContent = `Current ${progressLabelText}: `;
     progressValue.textContent = `${mediaItem.currentPage || 0} / ${mediaItem.totalPages || 1}`;
-    updateInput.value = '';
-    updateInput.placeholder = `Enter new ${progressLabelText.toLowerCase()}`;
+    updateInput.value = mediaItem.currentPage || 0;  // Set input value to current units
+    updateInput.placeholder = `Enter new ${progressLabelText. toLowerCase()}`;
     updateInput.min = 0;
     updateInput.max = mediaItem.totalPages || 1;
 
