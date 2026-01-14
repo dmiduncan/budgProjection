@@ -58,7 +58,8 @@ async function loadTrackedMedia() {
         const { data: statusData, error: statusError } = await supabase
             .from('lu_media_status')
             .select('*')
-            .eq('status', MediaStatus.IN_PROGRESS);
+            .eq('status', MediaStatus.IN_PROGRESS)
+            .order('date_updated', { ascending: false });
 
         if (statusError) {
             console.error('Error loading media status:', statusError);
