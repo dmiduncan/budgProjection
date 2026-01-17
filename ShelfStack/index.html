@@ -76,7 +76,7 @@
 
         .progress-container {
             flex: 1;
-            min-width: 200px;
+            min-width: 100px;
         }
 
         .progress-bar-wrapper {
@@ -106,6 +106,7 @@
 
         .update-button {
             margin-top: 1em;
+            min-width: 200px;
         }
 
         .header-container {
@@ -245,13 +246,12 @@
     </style>
 </head>
 <body>
-    <div id="app-container" style="padding: 2em;">
+    <div id="app-container" style="padding: 2em 15%;">
         <div class="header-container">
             <h3>shelfSTACK</h3>
-            <button id="home-btn" onclick="window.location.href='../'">Home</button>
+            <button type="button" id="home-btn" onclick="window.location.href='../'">Home</button>
         </div>
         <div class="search-container">
-            <button type="button" id="add-media-btn" class="button">Add Media</button>
             <input type="text" id="search-input" class="search-input" placeholder="Search for media...">
             <button type="button" id="search-btn" class="button">Search</button>
         </div>

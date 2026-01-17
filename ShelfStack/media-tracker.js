@@ -173,19 +173,14 @@ function renderMediaItems(mediaArray) {
                     <div class="media-detail"><strong>Type:</strong> ${media.mediaType}</div>
                 </div>
                 <div class="media-details-row-2">
-                    <div class="media-detail"><strong>Progress:</strong> ${media.percentageComplete}%</div>
                     <div class="progress-container">
                         <div class="progress-bar-wrapper">
                             <div class="progress-bar" style="width: ${media.percentageComplete}%"></div>
                             <div class="progress-text">${media.percentageComplete}%</div>
                         </div>
                     </div>
+                    <button type="button" class="button update-button" onclick="openUpdateModal(${media.id})">Update</button>
                 </div>
-                <button type="button" 
-                        class="button update-button" 
-                        onclick="openUpdateModal(${media.id})">
-                    Update
-                </button>
             </div>
         `;
 
@@ -434,6 +429,13 @@ async function openSearchModal() {
             imageUrl: dbItem.cover_art_url || dbItem.coverArtUrl || null,
             format: dbItem.format || null
         }));
+
+        // Sort results by title ascending (case-insensitive)
+        searchResults.sort((a, b) => {
+            const titleA = (a.title || '').toLowerCase();
+            const titleB = (b.title || '').toLowerCase();
+            return titleA.localeCompare(titleB, undefined, { numeric: true, sensitivity: 'base' });
+        });
 
         // Store search results for tracking
         currentSearchResults = searchResults;
