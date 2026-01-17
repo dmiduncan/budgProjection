@@ -497,8 +497,12 @@ function displaySearchResults(results, searchTerm) {
             
             const unitLabel = getUnitLabel(media. mediaType);
             const capitalizedLabel = unitLabel.charAt(0).toUpperCase() + unitLabel.slice(1);
+
+            const imageUrl = getMediaImageUrl(media);
+            const imgSrc = imageUrl || '';
             
             resultItem.innerHTML = `
+                <img src="${imgSrc}" alt="${media.title}" class="media-image" onerror="this.style.display='none';" ${!imgSrc ? 'style="display:none;"' : ''}>
                 <div class="search-result-info">
                     <div class="search-result-title">${media.title}</div>
                     <div class="search-result-details">
