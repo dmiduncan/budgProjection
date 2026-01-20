@@ -6,13 +6,11 @@
     <title>ShelfStack</title>
     <link rel="stylesheet" href="../css/main.css">
     <style>
-        .media-container {
-            border: solid 1px rgba(212, 212, 255, 0.1);
-            padding: 1.5em;
-            margin-bottom: 1.5em;
+        .media-image-row {
             display: flex;
-            gap: 1.5em;
-            align-items: flex-start;
+            justify-content: center;
+            width: 100%;
+            margin-bottom: 0.5em;
         }
 
         .media-image {
@@ -20,48 +18,76 @@
             height: 180px;
             object-fit: cover;
             border: solid 1px rgba(212, 212, 255, 0.1);
-            flex-shrink: 0;
         }
 
-        .media-info {
-            flex: 1;
+        .media-image-placeholder {
+            width: 120px;
+            height: 180px;
+            border: solid 1px rgba(212, 212, 255, 0.1);
+            background: rgba(212, 212, 255, 0.035);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.5em;
+            text-align: center;
+            font-size: 0.85em;
+            color: rgba(244, 244, 255, 0.6);
+            word-wrap: break-word;
+            overflow: hidden;
+        }
+
+        .media-top-section {
             display: flex;
             flex-direction: column;
             gap: 0.5em;
+            width: 100%;
+            align-items: center;
         }
 
-        .media-title-row {
+        .media-info {
             display: flex;
-            gap: 1em;
-            align-items: baseline;
-            margin-bottom: 0.5em;
-            flex-wrap: wrap;
+            flex-direction: column;
+            gap: 0.75em;
+            width: 100%;
+            align-items: center;
+            margin-top: auto;
+        }
+
+        .media-info-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5em;
+            width: 100%;
         }
 
         .media-title {
             font-size: 1.35em;
             font-weight: 600;
+            text-align: center;
         }
 
         .media-writer {
             font-size: 1em;
             color: rgba(244, 244, 255, 0.8);
             font-weight: 300;
+            text-align: center;
         }
 
-        .media-details-row {
-            display: flex;
-            gap: 1.5em;
-            flex-wrap: wrap;
-            align-items: center;
+        .media-detail {
+            font-size: 0.9em;
+            color: rgba(244, 244, 255, 0.8);
+            text-align: center;
         }
 
-        .media-details-row-2 {
-            display: flex;
-            gap: 1.5em;
-            flex-wrap: wrap;
-            align-items: center;
-            margin-top: 0.5em;
+        .media-detail strong {
+            color: #ffffff;
+            font-weight: 600;
+        }
+
+        .progress-container {
+            width: 100%;
+            max-width: 250px;
         }
 
         .media-detail {
@@ -131,6 +157,25 @@
 
         #media-list {
             margin-top: 2em;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5em;
+            justify-content: center;
+        }
+
+        .media-container {
+            border: solid 1px rgba(212, 212, 255, 0.1);
+            padding: 1.5em;
+            margin-bottom: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 1em;
+            align-items: center;
+            text-align: center;
+            max-width: 300px;
+            flex: 0 1 300px;
+            min-width: 250px;
+            justify-content: space-between;
         }
 
         /* Modal Styles */
@@ -246,7 +291,7 @@
     </style>
 </head>
 <body>
-    <div id="app-container" style="padding: 2em 15%;">
+    <div id="app-container" style="padding: 2em 15%; display:none;">
         <div class="header-container">
             <h3>shelfSTACK</h3>
             <button type="button" id="home-btn" onclick="window.location.href='../'">Home</button>
@@ -297,6 +342,6 @@
         </div>
     </div>
 
-    <script type="module" src="media-tracker.js"></script>
+    <script type="module" src="auth.js"></script>
 </body>
 </html>

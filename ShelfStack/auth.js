@@ -1,8 +1,10 @@
-// auth.js
+// auth.js for ShelfStack
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.86.0/+esm'
-// Replace with your own Supabase credentials
-const supabaseUrl = 'https://ljisujkxmbijleyhmxab.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxqaXN1amt4bWJpamxleWhteGFiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ1MzMyOTYsImV4cCI6MjA3MDEwOTI5Nn0.9CbNfvI5VlUUQ4bbHd18pGR9ft-tHz2FLKAF_4yQJsg';
+
+// ShelfStack Supabase project credentials
+const supabaseUrl = 'https://fscgyzqjjdwfzauzttek.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZzY2d5enFqamR3ZnphdXp0dGVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc3NDE0NjYsImV4cCI6MjA4MzMxNzQ2Nn0.lKwSixf1KK6RWSZvZvHb-BSpQx2pZirkUKIBGpGsf6s';
+
 export const supabase = createClient(supabaseUrl, supabaseKey)
 
 // UI Elements
@@ -18,7 +20,6 @@ authContainer.innerHTML = `\
   <button id="login-btn">Login</button>
   <button id="signup-btn">Sign Up</button>
   <button id="logout-btn" style="display:none;">Logout</button>
-  <button id="shelf-stack-btn" style="display:none;" onclick="window.location.href='./ShelfStack'">shelfSTACK</button>
   <br><br>
 `
 document.body.prepend(authContainer)
@@ -26,14 +27,13 @@ document.body.prepend(authContainer)
 const loginBtn = document.getElementById('login-btn')
 const signupBtn = document.getElementById('signup-btn')
 const logoutBtn = document.getElementById('logout-btn')
-const btnNavShelfStack = document.getElementById('shelf-stack-btn')
 const authMessage = document.getElementById('auth-message')
 
 // Login
 loginBtn.addEventListener('click', async () => {
   const email = document.getElementById('email').value
   const password = document.getElementById('password').value
-  const { error } = await supabase.auth. signInWithPassword({ email, password })
+  const { error } = await supabase.auth.signInWithPassword({ email, password })
   if (error) {
     authMessage.textContent = error.message
   }
@@ -41,7 +41,7 @@ loginBtn.addEventListener('click', async () => {
 
 // Sign up
 signupBtn.addEventListener('click', async () => {
-  const email = document. getElementById('email').value
+  const email = document.getElementById('email').value
   const password = document.getElementById('password').value
   const { error } = await supabase.auth.signUp({ email, password })
   if (error) {
@@ -57,27 +57,37 @@ logoutBtn.addEventListener('click', async () => {
 })
 
 // Auth state change
-supabase.auth.onAuthStateChange((event, session) => {
+supabase.auth.onAuthStateChange(async (event, session) => {
   if (session) {
-    // Hide login form, show logout and shelf stack
+    // Hide login form, show logout
     loginBtn.style.display = 'none'
     signupBtn.style.display = 'none'
     logoutBtn.style.display = 'inline-block'
-    btnNavShelfStack.style.display = 'inline-block'
     document.getElementById('divEmail').style.display = 'none'
     document.getElementById('divPassword').style.display = 'none'
 
     // Show the main app
     document.getElementById('app-container').style.display = 'block'
-    import('./main.js').then(mod => {
-    mod.initApp(supabase);
-  }).catch(err => console.error('Failed to load main.js', err));
+    
+    // Initialize media tracker after authentication
+    // Wait a bit for the script to load, then call loadTrackedMedia
+    setTimeout(() => {
+      if (window.loadTrackedMedia) {
+        window.loadTrackedMedia();
+      } else {
+        // If not available yet, try importing
+        import('./media-tracker.js').then(() => {
+          if (window.loadTrackedMedia) {
+            window.loadTrackedMedia();
+          }
+        }).catch(err => console.error('Error loading media tracker:', err));
+      }
+    }, 100);
   } else {
-    // Show login form, hide logout and shelf stack
+    // Show login form, hide logout
     loginBtn.style.display = 'inline-block'
     signupBtn.style.display = 'inline-block'
     logoutBtn.style.display = 'none'
-    btnNavShelfStack.style.display = 'none'
     document.getElementById('divEmail').style.display = ''
     document.getElementById('divPassword').style.display = ''
     authMessage.textContent = ''

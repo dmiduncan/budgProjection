@@ -1,13 +1,6 @@
 // media-tracker.js
-// Supabase configuration for MediaTracker (different project)
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.86.0/+esm'
-
-// MediaTracker Supabase project credentials
-const mediaTrackerSupabaseUrl = 'https://fscgyzqjjdwfzauzttek.supabase.co';
-const mediaTrackerSupabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZzY2d5enFqamR3ZnphdXp0dGVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc3NDE0NjYsImV4cCI6MjA4MzMxNzQ2Nn0.lKwSixf1KK6RWSZvZvHb-BSpQx2pZirkUKIBGpGsf6s';
-
-// Create Supabase client for MediaTracker
-const supabase = createClient(mediaTrackerSupabaseUrl, mediaTrackerSupabaseKey);
+// Import Supabase from auth.js (which has the ShelfStack credentials)
+import { supabase } from './auth.js';
 
 // Media Status Enumeration
 const MediaStatus = {
@@ -159,26 +152,47 @@ function renderMediaItems(mediaArray) {
         const currentValue = media.currentPage || 0;
         const totalValue = media.totalPages || 1;
         const imageUrl = getMediaImageUrl(media);
-        const imgSrc = imageUrl || '';
+        const hasImage = imageUrl && imageUrl.trim() !== '';
+
+        // Create image or placeholder
+        let imageHtml = '';
+        if (hasImage) {
+            imageHtml = `<img src="${imageUrl}" alt="${media.title}" class="media-image" onerror="this.parentElement.innerHTML='<div class=\\'media-image-placeholder\\'>${media.title}</div>';">`;
+        } else {
+            imageHtml = `<div class="media-image-placeholder">${media.title}</div>`;
+        }
 
         container.innerHTML = `
-            <img src="${imgSrc}" alt="${media.title}" class="media-image" onerror="this.style.display='none';" ${!imgSrc ? 'style="display:none;"' : ''}>
-            <div class="media-info">
-                <div class="media-title-row">
+            <div class="media-top-section">
+                <div class="media-image-row">
+                    ${imageHtml}
+                </div>
+                <div class="media-info-row">
                     <div class="media-title">${media.title}</div>
+                </div>
+            </div>
+            <div class="media-info">
+                <div class="media-info-row">
                     <div class="media-writer">${media.writer}</div>
                 </div>
-                <div class="media-details-row">
+                <div class="media-info-row">
                     <div class="media-detail"><strong>Status:</strong> ${media.status}</div>
+                </div>
+                <div class="media-info-row">
                     <div class="media-detail"><strong>Type:</strong> ${media.mediaType}</div>
                 </div>
-                <div class="media-details-row-2">
+                <div class="media-info-row">
+                    <div class="media-detail"><strong>Progress:</strong> ${media.percentageComplete}%</div>
+                </div>
+                <div class="media-info-row">
                     <div class="progress-container">
                         <div class="progress-bar-wrapper">
                             <div class="progress-bar" style="width: ${media.percentageComplete}%"></div>
                             <div class="progress-text">${media.percentageComplete}%</div>
                         </div>
                     </div>
+                </div>
+                <div class="media-info-row">
                     <button type="button" class="button update-button" onclick="openUpdateModal(${media.id})">Update</button>
                 </div>
             </div>
@@ -328,7 +342,6 @@ async function openSearchModal() {
         // Get all records and filter in JavaScript to avoid column name issues
         console.log('Searching for:', searchTerm);
         console.log('Supabase client:', supabase);
-        console.log('Supabase URL:', mediaTrackerSupabaseUrl);
         
         // Test the connection first
         const { data: testData, error: testError } = await supabase
@@ -716,17 +729,32 @@ function initMediaTracker() {
         });
     }
 
-    // Load tracked media on page load
-    loadTrackedMedia();
+    // Don't load tracked media here - wait for auth.js to call it after authentication
+    // This prevents loading data before user is authenticated
 }
 
 // Make functions available globally for onclick handlers
 window.openUpdateModal = openUpdateModal;
 window.trackMedia = trackMedia;
+window.loadTrackedMedia = loadTrackedMedia; // Export for auth.js to call
 
-// Initialize when DOM is ready
+// Initialize when DOM is ready, but only if app-container is visible (user is authenticated)
+// Otherwise, wait for auth.js to call loadTrackedMedia after authentication
+function checkAndInit() {
+    const appContainer = document.getElementById('app-container');
+    if (appContainer && appContainer.style.display !== 'none') {
+        // User is authenticated, initialize
+        initMediaTracker();
+    } else {
+        // Not authenticated yet, just set up the init function but don't load data
+        // Auth.js will call loadTrackedMedia after login
+        initMediaTracker();
+        // Don't call loadTrackedMedia here - wait for auth
+    }
+}
+
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initMediaTracker);
+    document.addEventListener('DOMContentLoaded', checkAndInit);
 } else {
-    initMediaTracker();
+    checkAndInit();
 }
