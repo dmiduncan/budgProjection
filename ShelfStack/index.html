@@ -217,6 +217,7 @@
         }
 
         .modal-content {
+            position: relative;
             background: #2a2f4a;
             border: solid 1px rgba(212, 212, 255, 0.1);
             padding: 2em;
@@ -308,6 +309,16 @@
             padding: 2em;
             color: rgba(244, 244, 255, 0.6);
         }
+
+        .modal-cancel-button {
+            position: absolute;
+            top: 0.1rem;
+            right: 0.1rem;
+            padding: 1rem 1rem;
+            line-height: 1;
+            font-size: .75rem;
+        }
+
     </style>
 </head>
 <body>
@@ -328,6 +339,7 @@
     <!-- Update Modal -->
     <div id="update-modal" class="modal-overlay">
         <div class="modal-content">
+            <button type="button" class="button modal-cancel-button" id="modal-cancel-btn">x</button>
             <h3>Update Progress</h3>
             <div class="modal-field">
                 <label id="current-progress-label">Current Page/Episode:</label>
@@ -343,7 +355,6 @@
                 <button type="button" class="button" id="modal-save-btn">Save</button>
                 <button type="button" class="button" id="modal-finish-btn">Finish</button>
                 <button type="button" class="button" id="modal-dnf-btn">DNF</button>
-                <button type="button" class="button" id="modal-cancel-btn">Cancel</button>
             </div>
         </div>
     </div>
@@ -351,12 +362,10 @@
     <!-- Search Results Modal -->
     <div id="search-modal" class="modal-overlay search-results-modal">
         <div class="modal-content">
+            <button type="button" class="button modal-cancel-button" id="search-modal-close-btn">x</button>
             <h3>Search Results</h3>
             <div id="search-results-list" class="search-results-list">
                 <!-- Search results will be inserted here -->
-            </div>
-            <div class="modal-buttons">
-                <button type="button" class="button" id="search-modal-close-btn">Close</button>
             </div>
         </div>
     </div>
