@@ -20,6 +20,7 @@ authContainer.innerHTML = `\
   <button id="login-btn">Login</button>
   <button id="signup-btn">Sign Up</button>
   <button id="logout-btn" style="display:none;">Logout</button>
+  <button type="button" id="home-btn" onclick="window.location.href='../'">Home</button>
   <br><br>
 `
 document.body.prepend(authContainer)
