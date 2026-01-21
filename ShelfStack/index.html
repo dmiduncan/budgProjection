@@ -135,6 +135,26 @@
             min-width: 200px;
         }
 
+        /* Remove white outline from buttons and add hover effect */
+        button,
+        .button {
+            box-shadow: none !important;
+            background-color: transparent !important;
+            transition: background-color 0.2s ease-in-out;
+        }
+
+        button:hover,
+        .button:hover {
+            box-shadow: none !important;
+            background-color: rgba(255, 255, 255, 0.05) !important;
+        }
+
+        button:active,
+        .button:active {
+            box-shadow: none !important;
+            background-color: rgba(255, 255, 255, 0.1) !important;
+        }
+
         .header-container {
             display: flex;
             justify-content: space-between;
@@ -294,7 +314,6 @@
     <div id="app-container" style="padding: 2em 15%; display:none;">
         <div class="header-container">
             <h3>shelfSTACK</h3>
-            <button type="button" id="home-btn" onclick="window.location.href='../'">Home</button>
         </div>
         <div class="search-container">
             <input type="text" id="search-input" class="search-input" placeholder="Search for media...">
