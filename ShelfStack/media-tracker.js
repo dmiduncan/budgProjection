@@ -2,6 +2,16 @@
 // Import Supabase from auth.js (which has the ShelfStack credentials)
 import { supabase } from './auth.js';
 
+// Helper function to get current user ID
+async function getCurrentUserId() {
+    const { data: { user }, error } = await supabase.auth.getUser();
+    if (error || !user) {
+        console.error('Error getting user:', error);
+        return null;
+    }
+    return user.id;
+}
+
 // Media Status Enumeration
 const MediaStatus = {
     PLANNED: 'planned',
@@ -47,11 +57,19 @@ let trackedMediaIds = new Set(); // Track which media_ids are already tracked as
 // Load tracked media from lu_media_status
 async function loadTrackedMedia() {
     try {
-        // Get all media_status records with status = "in progress"
+        // Get current user ID
+        const userId = await getCurrentUserId();
+        if (!userId) {
+            alert('You must be logged in to view tracked media.');
+            return;
+        }
+
+        // Get all media_status records with status = "in progress" for current user
         const { data: statusData, error: statusError } = await supabase
             .from('lu_media_status')
             .select('*')
             .eq('status', MediaStatus.IN_PROGRESS)
+            .eq('user_id', userId)
             .order('date_updated', { ascending: false });
 
         if (statusError) {
@@ -282,11 +300,19 @@ async function updateMediaItem(newValue, action = 'save') {
     }
 
     try {
-        // Update lu_media_status table
+        // Get current user ID to ensure we're updating the correct user's record
+        const userId = await getCurrentUserId();
+        if (!userId) {
+            alert('You must be logged in to update media progress.');
+            return;
+        }
+
+        // Update lu_media_status table (filtered by user_id for security)
         const { error } = await supabase
             .from('lu_media_status')
             .update(updateData)
-            .eq('id', mediaItem.statusId);
+            .eq('id', mediaItem.statusId)
+            .eq('user_id', userId); // Ensure user can only update their own records
 
         if (error) {
             console.error('Error updating media status:', error);
@@ -296,11 +322,19 @@ async function updateMediaItem(newValue, action = 'save') {
 
         // Add journal entry if units changed (for save or finish actions)
         if ((action === 'save' || action === 'finish') && journalUnits !== 0) {
+            // Get current user ID
+            const userId = await getCurrentUserId();
+            if (!userId) {
+                console.error('Cannot create journal entry: user not authenticated');
+                return;
+            }
+
             const { error:  journalError } = await supabase
                 .from('lu_journal_entry')
                 .insert([{
                     media_status_id: mediaItem.statusId,
-                    units: journalUnits
+                    units: journalUnits,
+                    user_id: userId
                 }]);
 
             if (journalError) {
@@ -566,15 +600,24 @@ async function trackMedia(mediaId) {
     }
 
     try {
-        // Check if a status record exists for this media_id
+        // Get current user ID
+        const userId = await getCurrentUserId();
+        if (!userId) {
+            alert('You must be logged in to track media.');
+            return;
+        }
+
+        // Check if a status record exists for this media_id and user
         const { data: existingStatus, error: checkError } = await supabase
             .from('lu_media_status')
             .select('*')
             .eq('media_id', mediaId)
+            .eq('user_id', userId)
             .single();
 
         const statusData = {
             media_id: mediaId,
+            user_id: userId,
             status: MediaStatus.IN_PROGRESS,
             current_units: 0,
             percentage_complete: 0,
