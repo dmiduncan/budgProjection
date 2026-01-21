@@ -166,9 +166,6 @@ function renderMediaItems(mediaArray) {
         container.className = 'media-container';
         container.dataset.mediaId = media.id;
 
-        const progressLabel = getProgressLabel(media.mediaType);
-        const currentValue = media.currentPage || 0;
-        const totalValue = media.totalPages || 1;
         const imageUrl = getMediaImageUrl(media);
         const hasImage = imageUrl && imageUrl.trim() !== '';
 
@@ -548,29 +545,51 @@ function displaySearchResults(results, searchTerm) {
             const capitalizedLabel = unitLabel.charAt(0).toUpperCase() + unitLabel.slice(1);
 
             const imageUrl = getMediaImageUrl(media);
-            const imgSrc = imageUrl || '';
-            
-            resultItem.innerHTML = `
-                <img src="${imgSrc}" alt="${media.title}" class="media-image" onerror="this.style.display='none';" ${!imgSrc ? 'style="display:none;"' : ''}>
-                <div class="search-result-info">
-                    <div class="search-result-title">${media.title}</div>
-                    <div class="search-result-details">
-                        <strong>Writer:</strong> ${media.writer} | 
-                        <strong>Type:</strong> ${media.mediaType} | 
-                        <strong>${capitalizedLabel}:</strong> ${media.totalPages}
-                        ${isTracked ? ' | <span style="color: #9bf1ff;">(Already Tracked)</span>' : ''}
-                    </div>
-                </div>
-                <button type="button" 
-                        class="button" 
-                        ${isTracked ? 'disabled style="opacity: 0.5;"' : ''}
-                        onclick="trackMedia(${media.id})">
-                    ${isTracked ? 'Tracked' : 'Track'}
-                </button>
-            `;
+            const hasImage = imageUrl && imageUrl.trim() !== '';
 
-            resultsList.appendChild(resultItem);
-        });
+            // Create image or placeholder
+            let imageHtml = '';
+            if (hasImage) {
+                imageHtml = `<img src="${imageUrl}" alt="${media.title}" class="media-image" onerror="this.parentElement.innerHTML='<div class=\\'media-image-placeholder\\'>${media.title}</div>';">`;
+            } else {
+                imageHtml = `<div class="media-image-placeholder">${media.title}</div>`;
+            }
+                
+                resultItem.innerHTML = `
+                    <div class="media-top-section">
+                        <div class="media-image-row">
+                            ${imageHtml}
+                        </div>
+                    </div>
+                    <div class="media-info">
+                        <div class="media-info-row">
+                            <div class="media-title">${media.title}</div>
+                        </div>    
+                        <div class="media-info-row">
+                            <div class="media-writer">${media.writer}</div>
+                        </div>
+                        <div class="media-info-row">
+                            <div class="media-detail"><strong>Type:</strong> ${media.mediaType}</div>
+                        </div>
+                        <div class="media-info-row">
+                            <div class="media-detail"><strong>${capitalizedLabel}:</strong> ${media.totalPages}</div>
+                        </div>
+                        <div class="media-info-row">
+                            ${isTracked ? ' | <span style="color: #9bf1ff;">(Already Tracked)</span>' : ''}
+                        </div>
+                        <div class="media-info-row">
+                            <button type="button" 
+                                    class="button" 
+                                    ${isTracked ? 'disabled style="opacity: 0.5;"' : ''}
+                                    onclick="trackMedia(${media.id})">
+                                ${isTracked ? 'Tracked' : 'Track'}
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                resultsList.appendChild(resultItem);
+            });
     }
 
     modal.classList.add('active');
