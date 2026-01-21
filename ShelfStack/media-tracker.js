@@ -537,11 +537,11 @@ function displaySearchResults(results, searchTerm) {
         `;
     } else {
         results.forEach(media => {
-            const isTracked = trackedMediaIds.has(media. id);
+            const isTracked = trackedMediaIds.has(media.id);
             const resultItem = document.createElement('div');
             resultItem.className = 'search-result-item';
             
-            const unitLabel = getUnitLabel(media. mediaType);
+            const unitLabel = getUnitLabel(media.mediaType);
             const capitalizedLabel = unitLabel.charAt(0).toUpperCase() + unitLabel.slice(1);
 
             const imageUrl = getMediaImageUrl(media);
