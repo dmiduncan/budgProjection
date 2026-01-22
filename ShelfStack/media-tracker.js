@@ -166,6 +166,8 @@ function renderMediaItems(mediaArray) {
         container.className = 'media-container';
         container.dataset.mediaId = media.id;
 
+        const progressLabelText = getUnitLabel(media.mediaType);
+
         const imageUrl = getMediaImageUrl(media);
         const hasImage = imageUrl && imageUrl.trim() !== '';
 
@@ -197,7 +199,7 @@ function renderMediaItems(mediaArray) {
                     <div class="media-detail"><strong>Type:</strong> ${media.mediaType}</div>
                 </div>
                 <div class="media-info-row">
-                    <div class="media-detail"><strong>Progress:</strong> ${media.percentageComplete}%</div>
+                    <div class="media-detail"><strong>Progress:</strong> ${media.currentPage || 0}/${media.totalPages || 1} ${progressLabelText}</div>
                 </div>
                 <div class="media-info-row">
                     <div class="progress-container">
@@ -208,7 +210,7 @@ function renderMediaItems(mediaArray) {
                     </div>
                 </div>
                 <div class="media-info-row">
-                    <button type="button" class="button update-button" onclick="openUpdateModal(${media.id})">Update</button>
+                    <button type="button" class="button update-button" onclick="openUpdateModal(${media.id})">Details</button>
                 </div>
             </div>
         `;
