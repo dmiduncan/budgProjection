@@ -235,7 +235,7 @@ function openUpdateModal(mediaId) {
     progressLabel.textContent = `Current ${progressLabelText}: `;
     progressValue.textContent = `${mediaItem.currentPage || 0} / ${mediaItem.totalPages || 1}`;
     updateLabel.textContent = `New ${progressLabelText}: `;
-    // updateInput.value = mediaItem.currentPage || 0;  // Set input value to current units
+    updateInput.value = '';  
     updateInput.placeholder = `Enter new ${progressLabelText. toLowerCase()}`;
     updateInput.min = 0;
     updateInput.max = mediaItem.totalPages || 1;
