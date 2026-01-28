@@ -319,6 +319,25 @@
             font-size: .75rem;
         }
 
+        #confirmation-modal .modal-content {
+            display: flex;
+            flex-direction: column;  
+            align-items: center;     
+            justify-content: center;  
+            text-align: center;   
+        }
+
+        #confirmation-modal .button {
+            margin-top: 10px;
+            display: flex;
+            flex-direction: row;
+            gap: 10px;
+        }
+        
+        #confirmation-modal .modal-buttons .button {
+            flex: 1;
+        }
+
     </style>
 </head>
 <body>
@@ -369,6 +388,17 @@
             </div>
         </div>
     </div>
+
+    <!-- Confirmation Modal -->
+     <div id="confirmation-modal" class="modal-overlay">
+        <div class="modal-content">
+            <label id="modal-confirmation-label">THis is BrokeEN</label>
+            <div class="modal-buttons">
+                <button type="button" class="button" id="modal-confirm-yes">Yes</button>
+                <button type="button" class="button" id="modal-confirm-no">No</button>
+            </div>
+        </div>
+     </div>
 
     <script type="module" src="auth.js"></script>
 </body>

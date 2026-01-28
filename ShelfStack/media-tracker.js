@@ -358,6 +358,28 @@ async function updateMediaItem(newValue, action = 'save') {
     }
 }
 
+// Open confirmation modal
+async function openConfirmationModal(action) {
+    const modal = document.getElementById('confirmation-modal');
+    if (!modal) return;
+
+    const confirmationLabel = document.getElementById('modal-confirmation-label');
+    let customLabelAction = action === 'finish' ? 'Finished' : 'DNF';
+    confirmationLabel.textContent = `Are you sure you want to mark this media as ${customLabelAction}?`;
+
+    modal.dataset.action = action; 
+
+    modal.classList.add('active');
+}
+
+// Close search modal
+function closeConfirmationModal() {
+    const modal = document.getElementById('confirmation-modal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+}
+
 // Open search results modal
 async function openSearchModal() {
     const searchInput = document.getElementById('search-input');
@@ -634,6 +656,7 @@ async function trackMedia(mediaId) {
             .select('*')
             .eq('media_id', mediaId)
             .eq('user_id', userId)
+            .eq('status', 'in progress')
             .single();
 
         const statusData = {
@@ -728,6 +751,25 @@ function initMediaTracker() {
     const modalDnfBtn = document.getElementById('modal-dnf-btn');
     const modalCancelBtn = document.getElementById('modal-cancel-btn');
     const modalUpdateInput = document.getElementById('modal-update-input');
+    const modalConfirmationNo = document.getElementById('modal-confirm-no');
+    const modalConfirmationYes = document.getElementById('modal-confirm-yes');
+
+    if (modalConfirmationNo) {
+        modalConfirmationNo.addEventListener('click', () => {
+            closeConfirmationModal();
+        })
+    }
+
+    if (modalConfirmationYes) {
+        modalConfirmationYes.addEventListener("click", () => {
+            const modal = document.getElementById("confirmation-modal");
+            const action = modal.dataset.action; 
+            updateMediaItem(null, action);
+            closeConfirmationModal();
+        });
+    }
+
+
 
     if (modalSaveBtn) {
         modalSaveBtn.addEventListener('click', () => {
@@ -742,13 +784,13 @@ function initMediaTracker() {
 
     if (modalFinishBtn) {
         modalFinishBtn.addEventListener('click', () => {
-            updateMediaItem(null, 'finish');
+            openConfirmationModal('finish');
         });
     }
 
     if (modalDnfBtn) {
         modalDnfBtn.addEventListener('click', () => {
-            updateMediaItem(null, 'dnf');
+            openConfirmationModal('dnf');
         });
     }
 
