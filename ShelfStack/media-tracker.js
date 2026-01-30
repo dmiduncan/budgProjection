@@ -393,8 +393,14 @@ async function openSearchModal() {
     }
 
     try {
+        // Get current user ID first
+        const userId = await getCurrentUserId();
+        if (!userId) {
+            alert('You must be logged in to search media.');
+            return;
+        }
+
         // Query Supabase lu_media table
-        // Get all records and filter in JavaScript to avoid column name issues
         console.log('Searching for:', searchTerm);
         console.log('Supabase client:', supabase);
         
@@ -454,12 +460,10 @@ async function openSearchModal() {
         }
 
         // Filter results in JavaScript
-        // Case-insensitive search with wildcards on either side (using includes)
         const searchLower = searchTerm.toLowerCase().trim();
         console.log('Search term (lowercase):', searchLower);
         
         const filteredData = (data || []).filter(dbItem => {
-            // Try multiple possible column names for title
             const titleField = String(dbItem.text || dbItem.title || dbItem.name || dbItem.media_text || '').toLowerCase();
             const writerField = String(dbItem.writer || dbItem.author || '').toLowerCase();
             const mediaTypeField = String(dbItem.media_type || dbItem.mediaType || dbItem.type || '').toLowerCase();
@@ -472,7 +476,6 @@ async function openSearchModal() {
                 searchTerm: searchLower
             });
             
-            // Case-insensitive matching (allows wildcards on either side via includes)
             const matches = titleField.includes(searchLower) ||
                           writerField.includes(searchLower) ||
                           mediaTypeField.includes(searchLower);
@@ -486,16 +489,35 @@ async function openSearchModal() {
 
         console.log(`Search for "${searchTerm}" returned ${filteredData.length} results from ${data?.length || 0} total records`);
 
+        // Get completed status records for the current user
+        const mediaIds = filteredData.map(item => item.id);
+        const { data: completedStatusData, error: completedError } = await supabase
+            .from('lu_media_status')
+            .select('media_id')
+            .eq('user_id', userId)
+            .eq('status', MediaStatus.COMPLETED)
+            .in('media_id', mediaIds);
+
+        if (completedError) {
+            console.error('Error fetching completed status:', completedError);
+            // Continue without completed status info rather than failing
+        }
+
+        // Create a Set of completed media IDs for fast lookup
+        const completedMediaIds = new Set(
+            (completedStatusData || []).map(item => item.media_id)
+        );
+
         // Map database columns to app structure
-        // Try different possible column names for title/text
         const searchResults = filteredData.map(dbItem => ({
             id: dbItem.id,
             title: dbItem.text || dbItem.title || dbItem.name || '',
             writer: dbItem.writer || '',
             mediaType: dbItem.media_type || dbItem.mediaType || '',
-            totalPages: dbItem.num_units || dbItem.numUnits || 1,
+            totalUnits: dbItem.num_units || dbItem.numUnits || 1,
             imageUrl: dbItem.cover_art_url || dbItem.coverArtUrl || null,
-            format: dbItem.format || null
+            format: dbItem.format || null,
+            previouslyCompleted: completedMediaIds.has(dbItem.id)
         }));
 
         // Sort results by title ascending (case-insensitive)
@@ -509,7 +531,6 @@ async function openSearchModal() {
         currentSearchResults = searchResults;
         
         // Update trackedMediaIds set for search results
-        // Check which of these are already tracked
         const trackedIds = new Set();
         if (trackedMediaIds.size > 0) {
             searchResults.forEach(item => {
@@ -547,13 +568,13 @@ function formatUnitDisplay(mediaType, totalUnits) {
 
 // Display search results in modal
 function displaySearchResults(results, searchTerm) {
-    const modal = document. getElementById('search-modal');
+    const modal = document.getElementById('search-modal');
     const resultsList = document.getElementById('search-results-list');
     if (!modal || !resultsList) return;
 
     resultsList.innerHTML = '';
 
-    if (results. length === 0) {
+    if (results.length === 0) {
         resultsList.innerHTML = `
             <div class="no-results">
                 <p>No results found for "${searchTerm}"</p>
@@ -562,6 +583,7 @@ function displaySearchResults(results, searchTerm) {
     } else {
         results.forEach(media => {
             const isTracked = trackedMediaIds.has(media.id);
+            const canQuickComplete = media.previouslyCompleted || isTracked;
             const resultItem = document.createElement('div');
             resultItem.className = 'search-result-item';
             
@@ -579,41 +601,49 @@ function displaySearchResults(results, searchTerm) {
                 imageHtml = `<div class="media-image-placeholder">${media.title}</div>`;
             }
                 
-                resultItem.innerHTML = `
-                    <div class="media-top-section">
-                        <div class="media-image-row">
-                            ${imageHtml}
-                        </div>
+            resultItem.innerHTML = `
+                <div class="media-top-section">
+                    <div class="media-image-row">
+                        ${imageHtml}
                     </div>
-                    <div class="media-info">
-                        <div class="media-info-row">
-                            <div class="media-title">${media.title}</div>
-                        </div>    
-                        <div class="media-info-row">
-                            <div class="media-writer">${media.writer}</div>
-                        </div>
-                        <div class="media-info-row">
-                            <div class="media-detail"><strong>Type:</strong> ${media.mediaType}</div>
-                        </div>
-                        <div class="media-info-row">
-                            <div class="media-detail"><strong>${capitalizedLabel}:</strong> ${media.totalPages}</div>
-                        </div>
-                        <div class="media-info-row">
-                            ${isTracked ? ' | <span style="color: #9bf1ff;">(Already Tracked)</span>' : ''}
-                        </div>
-                        <div class="media-info-row">
-                            <button type="button" 
-                                    class="button" 
-                                    ${isTracked ? 'disabled style="opacity: 0.5;"' : ''}
-                                    onclick="trackMedia(${media.id})">
-                                ${isTracked ? 'Tracked' : 'Track'}
-                            </button>
-                        </div>
+                </div>
+                <div class="media-info">
+                    <div class="media-info-row">
+                        <div class="media-title">${media.title}</div>
+                    </div>    
+                    <div class="media-info-row">
+                        <div class="media-writer">${media.writer}</div>
                     </div>
-                `;
+                    <div class="media-info-row">
+                        <div class="media-detail"><strong>Type:</strong> ${media.mediaType}</div>
+                    </div>
+                    <div class="media-info-row">
+                        <div class="media-detail"><strong>${capitalizedLabel}:</strong> ${media.totalUnits}</div>
+                    </div>
+                    <div class="media-info-row">
+                        ${isTracked ? '<span style="color: #9bf1ff;">(Already Tracked)</span>' : ''}
+                    </div>
+                    <div class="media-info-row">
+                        <button type="button" 
+                                class="button" 
+                                ${isTracked ? 'disabled style="opacity: 0.5;"' : ''}
+                                onclick="trackMedia(${media.id})">
+                            ${isTracked ? 'Tracked' : 'Track'}
+                        </button>
+                    </div>
+                    <div class="media-info-row">
+                        <button type="button" 
+                                class="button"
+                                ${canQuickComplete ? 'style="display: none;"' : ''}
+                                onclick="quickComplete(${media.id})">
+                            Quick Complete
+                        </button>
+                    </div>
+                </div>
+            `;
 
-                resultsList.appendChild(resultItem);
-            });
+            resultsList.appendChild(resultItem);
+        });
     }
 
     modal.classList.add('active');
@@ -624,6 +654,58 @@ function closeSearchModal() {
     const modal = document.getElementById('search-modal');
     if (modal) {
         modal.classList.remove('active');
+    }
+}
+
+// Add lu_media_status entry without adding journal entries
+async function quickComplete(mediaId) {
+    // Find the media item in current search results
+    const mediaItem = currentSearchResults.find(m => m.id === mediaId);
+    if (!mediaItem) {
+        alert('Media item not found. Please search again.');
+        return;
+    }
+
+    try {
+        // Get current user ID
+        const userId = await getCurrentUserId();
+        if (!userId) {
+            alert('You must be logged in to track media.');
+            return;
+        }
+
+        const statusData = {
+            media_id: mediaId,
+            user_id: userId,
+            status: MediaStatus.COMPLETED,
+            current_units: mediaItem.totalUnits,
+            percentage_complete: 100,
+            date_started: '2000-01-01' // default date in the past
+        };
+
+        // Insert new record
+        const { data, error } = await supabase
+            .from('lu_media_status')
+            .insert([statusData])
+            .select()
+            .single();
+
+        if (error) {
+            console.error('Error inserting media status:', error);
+            alert('Error tracking media: ' + error.message);
+            return;
+        }
+        
+        // Update search results to show it's now tracked
+        const searchInput = document.getElementById('search-input');
+        if (searchInput && searchInput.value.trim() !== '') {
+            openSearchModal(); // Refresh search results
+        } else {
+            closeSearchModal();
+        }
+    } catch (err) {
+        console.error('Error in quickComplete:', err);
+        alert('Error during quick complete: ' + (err.message || err));
     }
 }
 
@@ -650,7 +732,7 @@ async function trackMedia(mediaId) {
             return;
         }
 
-        // Check if a status record exists for this media_id and user
+        // Check if an in progress status record exists for this media_id and user
         const { data: existingStatus, error: checkError } = await supabase
             .from('lu_media_status')
             .select('*')
@@ -769,8 +851,6 @@ function initMediaTracker() {
         });
     }
 
-
-
     if (modalSaveBtn) {
         modalSaveBtn.addEventListener('click', () => {
             const value = modalUpdateInput.value;
@@ -842,6 +922,7 @@ function initMediaTracker() {
 // Make functions available globally for onclick handlers
 window.openUpdateModal = openUpdateModal;
 window.trackMedia = trackMedia;
+window.quickComplete = quickComplete;
 window.loadTrackedMedia = loadTrackedMedia; // Export for auth.js to call
 
 // Initialize when DOM is ready, but only if app-container is visible (user is authenticated)
