@@ -338,12 +338,48 @@
             flex: 1;
         }
 
+        .collapsible {
+            cursor: pointer;
+            width: 100%;
+            border: none;
+            text-align: left;
+            outline: none;
+            font-size: 12px;
+            max-width: 220px;
+        }
+
+        .content {
+            padding-left: 18px;
+            display: none;
+            overflow: hidden;
+            font-size: 14px;
+        }
+
+        .collapsible:after {
+            content: '\29FE';
+            font-size: 16px;
+            color: white;
+            float: right;
+            margin-left: 5px;
+        }
+
+        .active:after {
+            content: "\25BE"; 
+            font-size: 12px;
+        }
+
     </style>
 </head>
 <body>
     <div id="app-container" style="padding: 2em 15%; display:none;">
         <div class="header-container">
             <h3>shelfSTACK</h3>
+        </div>
+        <div class="streak-container">
+            <button type="button" class="collapsible">Active Streaks</button>
+            <div class="content">
+                <p>No Active Streaks</p>
+            </div>
         </div>
         <div class="search-container">
             <input type="text" id="search-input" class="search-input" placeholder="Search for media...">

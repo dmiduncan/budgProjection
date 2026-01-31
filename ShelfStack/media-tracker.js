@@ -54,6 +54,214 @@ let currentModalMediaId = null;
 let currentSearchResults = []; // Store current search results for tracking
 let trackedMediaIds = new Set(); // Track which media_ids are already tracked as "in progress"
 
+async function loadStreaks() {
+    try {
+        const userId = await getCurrentUserId();
+        if(!userId) {
+            console.log('User not logged in, skipping streak load');
+            displayStreaks({});
+            return;
+        }
+
+        // Get all journal entries for the user
+        const { data: journalEntries, error: journalError } = await supabase
+            .from('lu_journal_entry')
+            .select('id, date_created, media_status_id')
+            .eq('user_id', userId)
+            .order('date_created', { ascending: false });
+
+        if (journalError) {
+            console.error('Error loading journal entries:', journalError);
+            console.error('Error details:', {
+                message: journalError.message,
+                details: journalError.details,
+                hint: journalError.hint,
+                code: journalError.code
+            });
+            displayStreaks({});
+            return;
+        }
+
+        if (!journalEntries || journalEntries.length === 0) {
+            console.log('No journal entries found');
+            displayStreaks({});
+            return;
+        }
+
+        // Get unique media_status_ids
+        const mediaStatusIds = [...new Set(journalEntries.map(e => e.media_status_id))];
+
+        // Get media_status records
+        const { data: mediaStatusData, error: statusError } = await supabase
+            .from('lu_media_status')
+            .select('id, media_id')
+            .in('id', mediaStatusIds);
+
+        if (statusError) {
+            console.error('Error loading media status:', statusError);
+            displayStreaks({});
+            return;
+        }
+
+        // Get unique media_ids
+        const mediaIds = [...new Set(mediaStatusData.map(s => s.media_id))];
+
+        // Get media records with types
+        const { data: mediaData, error: mediaError } = await supabase
+            .from('lu_media')
+            .select('id, media_type')
+            .in('id', mediaIds);
+
+        if (mediaError) {
+            console.error('Error loading media:', mediaError);
+            displayStreaks({});
+            return;
+        }
+
+        // Create lookup maps
+        const statusToMediaId = {};
+        mediaStatusData.forEach(status => {
+            statusToMediaId[status.id] = status.media_id;
+        });
+
+        const mediaIdToType = {};
+        mediaData.forEach(media => {
+            mediaIdToType[media.id] = media.media_type;
+        });
+
+        // Enrich journal entries with media type
+        const enrichedEntries = journalEntries.map(entry => {
+            const mediaId = statusToMediaId[entry.media_status_id];
+            const mediaType = mediaId ? mediaIdToType[mediaId] : null;
+            return {
+                ...entry,
+                media_type: mediaType
+            };
+        }).filter(entry => entry.media_type); // Remove entries without media type
+
+        console.log('Enriched journal entries:', enrichedEntries);
+
+        // Calculate streaks by media type
+        const streaks = calculateStreaksByMediaType(enrichedEntries);
+        
+        console.log('Calculated streaks:', streaks);
+        displayStreaks(streaks);
+
+    } catch (err) {
+        console.error('Error in loadStreaks:', err);
+        console.error('Error stack:', err.stack);
+        displayStreaks({});
+    }
+}
+
+function calculateStreaksByMediaType(journalEntries) {
+    // Group entries by media type and date
+    const entriesByTypeAndDate = {};
+    
+    journalEntries.forEach(entry => {
+        const mediaType = entry.media_type;
+        if (!mediaType) return;
+        
+        // Extract date from timestamp (YYYY-MM-DD format)
+        const entryDate = entry.date_created.split('T')[0];
+        
+        if (!entriesByTypeAndDate[mediaType]) {
+            entriesByTypeAndDate[mediaType] = new Set();
+        }
+        entriesByTypeAndDate[mediaType].add(entryDate);
+    });
+
+    console.log('Entries by type and date:', entriesByTypeAndDate);
+
+    // Calculate streak for each media type
+    const streaks = {};
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    for (const [mediaType, datesSet] of Object.entries(entriesByTypeAndDate)) {
+        // Convert Set to sorted array (descending - most recent first)
+        const dates = Array.from(datesSet)
+            .map(dateStr => new Date(dateStr))
+            .sort((a, b) => b - a);
+        
+        if (dates.length === 0) {
+            streaks[mediaType] = 0;
+            continue;
+        }
+        
+        // Check if most recent entry is today or yesterday
+        const mostRecentDate = new Date(dates[0]);
+        mostRecentDate.setHours(0, 0, 0, 0);
+        
+        const daysDiff = Math.floor((today - mostRecentDate) / (1000 * 60 * 60 * 24));
+        
+        console.log(`${mediaType} - Most recent: ${mostRecentDate.toISOString()}, Days diff: ${daysDiff}`);
+        
+        // If the most recent entry is more than 1 day ago, streak is broken
+        if (daysDiff > 1) {
+            streaks[mediaType] = 0;
+            continue;
+        }
+        
+        // Count consecutive days
+        let streakCount = 1;
+        let currentDate = new Date(mostRecentDate);
+        
+        for (let i = 1; i < dates.length; i++) {
+            const prevDate = new Date(dates[i]);
+            prevDate.setHours(0, 0, 0, 0);
+            
+            // Calculate expected previous date (one day before current)
+            const expectedPrevDate = new Date(currentDate);
+            expectedPrevDate.setDate(expectedPrevDate.getDate() - 1);
+            expectedPrevDate.setHours(0, 0, 0, 0);
+            
+            console.log(`  Comparing ${prevDate.toISOString()} with expected ${expectedPrevDate.toISOString()}`);
+            
+            // Check if dates are consecutive
+            if (prevDate.getTime() === expectedPrevDate.getTime()) {
+                streakCount++;
+                currentDate = prevDate;
+            } else {
+                // Gap found, stop counting
+                console.log(`  Gap found, stopping at ${streakCount} days`);
+                break;
+            }
+        }
+        
+        streaks[mediaType] = streakCount;
+    }
+    
+    return streaks;
+}
+
+function displayStreaks(streaks) {
+    console.log('Active Streaks:', streaks);
+    
+    // Find the content div inside the streak-container
+    const streakContainer = document.querySelector('.streak-container .content');
+    if (!streakContainer) {
+        console.warn('Streak container not found');
+        return;
+    }
+    
+    // Filter out streaks with count of 0
+    const activeStreaks = Object.entries(streaks).filter(([_, count]) => count > 0);
+    
+    if (activeStreaks.length === 0) {
+        streakContainer.innerHTML = '<p>No Active Streaks</p>';
+        return;
+    }
+    
+    // Build HTML for active streaks
+    let streaksHtml = '';
+    activeStreaks.forEach(([mediaType, streakCount]) => {
+        streaksHtml += `<p>${mediaType}: ${streakCount} day(s)</p>\n`;
+    });
+    
+    streakContainer.innerHTML = streaksHtml;
+}   
+
 // Load tracked media from lu_media_status
 async function loadTrackedMedia() {
     try {
@@ -131,6 +339,9 @@ async function loadTrackedMedia() {
 
         console.log('Loaded tracked media:', currentMediaData);
         renderMediaItems(currentMediaData);
+
+        // Load streaks after loading media
+        await loadStreaks();
     } catch (err) {
         console.error('Error in loadTrackedMedia:', err);
         alert('Error loading tracked media: ' + (err.message || err));
@@ -919,10 +1130,26 @@ function initMediaTracker() {
     // This prevents loading data before user is authenticated
 }
 
+var coll = document.getElementsByClassName("collapsible");
+var i;
+
+for (i = 0; i < coll.length; i++) {
+  coll[i].addEventListener("click", function() {
+    this.classList.toggle("active");
+    var content = this.nextElementSibling;
+    if (content.style.display === "block") {
+      content.style.display = "none";
+    } else {
+      content.style.display = "block";
+    }
+  });
+}
+
 // Make functions available globally for onclick handlers
 window.openUpdateModal = openUpdateModal;
 window.trackMedia = trackMedia;
 window.quickComplete = quickComplete;
+window.loadStreaks = loadStreaks;
 window.loadTrackedMedia = loadTrackedMedia; // Export for auth.js to call
 
 // Initialize when DOM is ready, but only if app-container is visible (user is authenticated)
