@@ -338,34 +338,71 @@
             flex: 1;
         }
 
-        .collapsible {
-            cursor: pointer;
-            width: 100%;
-            border: none;
-            text-align: left;
-            outline: none;
-            font-size: 12px;
-            max-width: 220px;
+        /* Streak Bar Styles */
+        .streak-bar {
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+            padding: 0em 0;
+            margin-bottom: 0;
+            flex-wrap: wrap;
+            gap: 0em;
+            max-width: 50%;
         }
 
-        .content {
-            padding-left: 18px;
-            display: none;
-            overflow: hidden;
-            font-size: 14px;
+        .streak-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5em;
+            padding: 0.25em 0.5em;
+            transition: background-color 0.2s ease;
+            position: relative;
+            cursor: default;
         }
 
-        .collapsible:after {
-            content: '\29FE';
-            font-size: 16px;
-            color: white;
-            float: right;
-            margin-left: 5px;
+        .streak-icon {
+            font-size: .75em;
+            line-height: 1;
         }
 
-        .active:after {
-            content: "\25BE"; 
-            font-size: 12px;
+        .streak-count {
+            font-size: .7em;
+            font-weight: 600;
+            color: #9bf1ff;
+        }
+
+        .streak-item .tooltip {
+            visibility: hidden;
+            background-color: #2a2f4a;
+            color: #ffffff;
+            text-align: center;
+            padding: 0.5em 0.75em;
+            border: solid 1px rgba(212, 212, 255, 0.1);
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            white-space: nowrap;
+            font-size: 0.85em;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .streak-item .tooltip::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #2a2f4a transparent transparent transparent;
+        }
+
+        .streak-item:hover .tooltip {
+            visibility: visible;
+            opacity: 1;
         }
 
     </style>
@@ -375,17 +412,37 @@
         <div class="header-container">
             <h3>shelfSTACK</h3>
         </div>
-        <div class="streak-container">
-            <button type="button" class="collapsible">Active Streaks</button>
-            <div class="content">
-                <p>No Active Streaks</p>
+        <div class="streak-bar">
+            <div class="streak-item">
+                <span class="streak-icon">📚</span>
+                <span class="streak-count" id="book-count">0</span>
+                <span class="tooltip">Books</span>
+            </div>
+            <div class="streak-item">
+                <span class="streak-icon">漫画</span>
+                <span class="streak-count" id="manga-count">0</span>
+                <span class="tooltip">Manga</span>
+            </div>
+            <div class="streak-item">
+                <span class="streak-icon">🍜</span>
+                <span class="streak-count" id="anime-count">0</span>
+                <span class="tooltip">Anime</span>
+            </div>
+            <div class="streak-item">
+                <span class="streak-icon">📺</span>
+                <span class="streak-count" id="tv-count">0</span>
+                <span class="tooltip">TV Shows</span>
+            </div>
+            <div class="streak-item">
+                <span class="streak-icon">🎬</span>
+                <span class="streak-count" id="movie-count">0</span>
+                <span class="tooltip">Movies</span>
             </div>
         </div>
         <div class="search-container">
             <input type="text" id="search-input" class="search-input" placeholder="Search for media...">
             <button type="button" id="search-btn" class="button">Search</button>
         </div>
-
         <div id="media-list">
             <!-- Media items will be dynamically inserted here -->
         </div>
