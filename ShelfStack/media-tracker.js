@@ -59,7 +59,99 @@ async function loadStreaks() {
         const userId = await getCurrentUserId();
         if(!userId) {
             console.log('User not logged in, skipping streak load');
-            displayStreaks({});
+            hideAllStreaks();
+            return;
+        }
+
+        // Get streak data from lu_user_streak table
+        const { data: streakData, error: streakError } = await supabase
+            .from('lu_user_streak')
+            .select('*')
+            .eq('user_id', userId)
+            .single();
+
+        if (streakError) {
+            console.error('Error loading user streaks:', streakError);
+            console.error('Error details:', {
+                message: streakError.message,
+                details: streakError.details,
+                hint: streakError.hint,
+                code: streakError.code
+            });
+            hideAllStreaks();
+            return;
+        }
+
+        if (!streakData) {
+            console.log('No streak data found for user');
+            hideAllStreaks();
+            return;
+        }
+
+        console.log('Loaded streak data:', streakData);
+
+        // Update streak bar with values from database
+        updateStreakBar({
+            book: streakData.book_streak_count || 0,
+            manga: streakData.manga_streak_count || 0,
+            anime: streakData.anime_streak_count || 0,
+            'tv show': streakData.tvshow_streak_count || 0,
+            movie: streakData.movie_streak_count || 0
+        });
+
+    } catch (err) {
+        console.error('Error in loadStreaks:', err);
+        console.error('Error stack:', err.stack);
+        hideAllStreaks();
+    }
+}
+
+// Update the streak bar display with counts
+function updateStreakBar(streaks) {
+    console.log('Updating streak bar:', streaks);
+
+    // Map media types to their element IDs
+    const streakElements = {
+        'book': 'book-count',
+        'manga': 'manga-count',
+        'anime': 'anime-count',
+        'tv show': 'tv-count',
+        'movie': 'movie-count'
+    };
+
+    // Update each streak count and hide/show based on value
+    Object.entries(streakElements).forEach(([mediaType, elementId]) => {
+        const countElement = document.getElementById(elementId);
+        const streakItem = countElement?.closest('.streak-item');
+        
+        if (countElement && streakItem) {
+            const count = streaks[mediaType] || 0;
+            countElement.textContent = count;
+            
+            // Hide if count is 0, show if greater than 0
+            if (count === 0) {
+                streakItem.style.display = 'none';
+            } else {
+                streakItem.style.display = 'flex';
+            }
+        }
+    });
+}
+
+// Hide all streak items
+function hideAllStreaks() {
+    const streakItems = document.querySelectorAll('.streak-item');
+    streakItems.forEach(item => {
+        item.style.display = 'none';
+    });
+}
+
+// Calculate and update streaks based on journal entries
+async function updateStreaks() {
+    try {
+        const userId = await getCurrentUserId();
+        if (!userId) {
+            console.log('User not logged in, cannot update streaks');
             return;
         }
 
@@ -72,19 +164,13 @@ async function loadStreaks() {
 
         if (journalError) {
             console.error('Error loading journal entries:', journalError);
-            console.error('Error details:', {
-                message: journalError.message,
-                details: journalError.details,
-                hint: journalError.hint,
-                code: journalError.code
-            });
-            displayStreaks({});
             return;
         }
 
         if (!journalEntries || journalEntries.length === 0) {
             console.log('No journal entries found');
-            displayStreaks({});
+            // Set all streaks to 0
+            await resetAllStreaks(userId);
             return;
         }
 
@@ -99,7 +185,6 @@ async function loadStreaks() {
 
         if (statusError) {
             console.error('Error loading media status:', statusError);
-            displayStreaks({});
             return;
         }
 
@@ -114,7 +199,6 @@ async function loadStreaks() {
 
         if (mediaError) {
             console.error('Error loading media:', mediaError);
-            displayStreaks({});
             return;
         }
 
@@ -139,22 +223,27 @@ async function loadStreaks() {
             };
         }).filter(entry => entry.media_type); // Remove entries without media type
 
-        console.log('Enriched journal entries:', enrichedEntries);
+        console.log('Enriched journal entries for streak calculation:', enrichedEntries);
 
         // Calculate streaks by media type
-        const streaks = calculateStreaksByMediaType(enrichedEntries);
+        const streaks = calculateStreakCounts(enrichedEntries);
         
         console.log('Calculated streaks:', streaks);
-        displayStreaks(streaks);
+
+        // Update lu_user_streak table
+        await saveStreaksToDatabase(userId, streaks);
+
+        // Reload streaks to update display
+        await loadStreaks();
 
     } catch (err) {
-        console.error('Error in loadStreaks:', err);
+        console.error('Error in updateStreaks:', err);
         console.error('Error stack:', err.stack);
-        displayStreaks({});
     }
 }
 
-function calculateStreaksByMediaType(journalEntries) {
+// Calculate streak counts for each media type
+function calculateStreakCounts(journalEntries) {
     // Group entries by media type and date
     const entriesByTypeAndDate = {};
     
@@ -162,26 +251,41 @@ function calculateStreaksByMediaType(journalEntries) {
         const mediaType = entry.media_type;
         if (!mediaType) return;
         
-        // Extract date from timestamp (YYYY-MM-DD format)
-        const entryDate = entry.date_created.split('T')[0];
+        // Normalize media type to lowercase
+        const normalizedType = mediaType.toLowerCase();
         
-        if (!entriesByTypeAndDate[mediaType]) {
-            entriesByTypeAndDate[mediaType] = new Set();
+        // Extract date from timestamp (YYYY-MM-DD format)
+        const entryDate = getZonedMidnight(entry.date_created)
+            .toISOString()
+            .split('T')[0];
+        
+        if (!entriesByTypeAndDate[normalizedType]) {
+            entriesByTypeAndDate[normalizedType] = new Set();
         }
-        entriesByTypeAndDate[mediaType].add(entryDate);
+        entriesByTypeAndDate[normalizedType].add(entryDate);
     });
 
     console.log('Entries by type and date:', entriesByTypeAndDate);
 
     // Calculate streak for each media type
-    const streaks = {};
+    const streaks = {
+        book: 0,
+        manga: 0,
+        anime: 0,
+        'tv show': 0,
+        movie: 0
+    };
+    
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
     
     for (const [mediaType, datesSet] of Object.entries(entriesByTypeAndDate)) {
         // Convert Set to sorted array (descending - most recent first)
         const dates = Array.from(datesSet)
-            .map(dateStr => new Date(dateStr))
+            .map(dateStr => new Date(`${dateStr}T00:00:00`))
             .sort((a, b) => b - a);
         
         if (dates.length === 0) {
@@ -203,7 +307,7 @@ function calculateStreaksByMediaType(journalEntries) {
             continue;
         }
         
-        // Count consecutive days
+        // Count consecutive days working backwards from most recent
         let streakCount = 1;
         let currentDate = new Date(mostRecentDate);
         
@@ -235,32 +339,108 @@ function calculateStreaksByMediaType(journalEntries) {
     return streaks;
 }
 
-function displayStreaks(streaks) {
-    console.log('Active Streaks:', streaks);
-    
-    // Find the content div inside the streak-container
-    const streakContainer = document.querySelector('.streak-container .content');
-    if (!streakContainer) {
-        console.warn('Streak container not found');
-        return;
+// Save streak counts to database
+async function saveStreaksToDatabase(userId, streaks) {
+    try {
+        const today = new Date().toISOString().split('T')[0];
+        
+        const updateData = {
+            book_streak_count: streaks.book || 0,
+            book_streak_latest_date: today,
+            manga_streak_count: streaks.manga || 0,
+            manga_streak_latest_date: today,
+            anime_streak_count: streaks.anime || 0,
+            anime_streak_latest_date: today,
+            tvshow_streak_count: streaks['tv show'] || 0,
+            tvshow_streak_latest_date:  today,
+            movie_streak_count: streaks.movie || 0,
+            movie_streak_latest_date: today
+        };
+
+        // Check if record exists
+        const { data: existingRecord, error: checkError } = await supabase
+            .from('lu_user_streak')
+            .select('id')
+            .eq('user_id', userId)
+            .single();
+
+        if (existingRecord && !checkError) {
+            // Update existing record
+            const { error: updateError } = await supabase
+                .from('lu_user_streak')
+                .update(updateData)
+                .eq('user_id', userId);
+
+            if (updateError) {
+                console.error('Error updating streaks:', updateError);
+            } else {
+                console.log('Streaks updated successfully');
+            }
+        } else {
+            // Insert new record
+            const { error: insertError } = await supabase
+                .from('lu_user_streak')
+                .insert([{
+                    user_id: userId,
+                    ...updateData
+                }]);
+
+            if (insertError) {
+                console.error('Error inserting streaks:', insertError);
+            } else {
+                console.log('Streaks inserted successfully');
+            }
+        }
+    } catch (err) {
+        console.error('Error saving streaks to database:', err);
     }
-    
-    // Filter out streaks with count of 0
-    const activeStreaks = Object.entries(streaks).filter(([_, count]) => count > 0);
-    
-    if (activeStreaks.length === 0) {
-        streakContainer.innerHTML = '<p>No Active Streaks</p>';
-        return;
+}
+
+// Reset all streaks to 0
+async function resetAllStreaks(userId) {
+    try {
+        const updateData = {
+            book_streak_count: 0,
+            book_streak_latest_date: null,
+            manga_streak_count: 0,
+            manga_streak_latest_date: null,
+            anime_streak_count: 0,
+            anime_streak_latest_date: null,
+            tvshow_streak_count: 0,
+            tvshow_streak_latest_date: null,
+            movie_streak_count: 0,
+            movie_streak_latest_date: null
+        };
+
+        // Check if record exists
+        const { data: existingRecord } = await supabase
+            .from('lu_user_streak')
+            .select('id')
+            .eq('user_id', userId)
+            .single();
+
+        if (existingRecord) {
+            // Update existing record
+            await supabase
+                .from('lu_user_streak')
+                .update(updateData)
+                .eq('user_id', userId);
+        } else {
+            // Insert new record with zeros
+            await supabase
+                .from('lu_user_streak')
+                .insert([{
+                    user_id: userId,
+                    ...updateData
+                }]);
+        }
+
+        console.log('All streaks reset to 0');
+        await loadStreaks(); // Reload to update display
+    } catch (err) {
+        console.error('Error resetting streaks:', err);
     }
-    
-    // Build HTML for active streaks
-    let streaksHtml = '';
-    activeStreaks.forEach(([mediaType, streakCount]) => {
-        streaksHtml += `<p>${mediaType}: ${streakCount} day(s)</p>\n`;
-    });
-    
-    streakContainer.innerHTML = streaksHtml;
-}   
+}
 
 // Load tracked media from lu_media_status
 async function loadTrackedMedia() {
@@ -447,7 +627,7 @@ function openUpdateModal(mediaId) {
     progressValue.textContent = `${mediaItem.currentPage || 0} / ${mediaItem.totalPages || 1}`;
     updateLabel.textContent = `New ${progressLabelText}: `;
     updateInput.value = '';  
-    updateInput.placeholder = `Enter new ${progressLabelText. toLowerCase()}`;
+    updateInput.placeholder = `Enter new ${progressLabelText.toLowerCase()}`;
     updateInput.min = 0;
     updateInput.max = mediaItem.totalPages || 1;
 
@@ -479,14 +659,14 @@ async function updateMediaItem(newValue, action = 'save') {
     if (action === 'save') {
         const newPage = parseInt(newValue, 10);
         if (isNaN(newPage) || newPage < 0 || newPage > (mediaItem.totalPages || 1)) {
-            alert(`Please enter a valid value between 0 and ${mediaItem.totalPages || 1}. `);
+            alert(`Please enter a valid value between 0 and ${mediaItem.totalPages || 1}.`);
             return;
         }
         
         // Calculate units difference for journal entry
         journalUnits = newPage - (mediaItem.currentPage || 0);
         
-        updateData. current_units = newPage;
+        updateData.current_units = newPage;
         updateData.percentage_complete = calculatePercentage(newPage, mediaItem.totalPages || 1);
         
         // Check if units entered equals total units (auto-finish)
@@ -501,11 +681,11 @@ async function updateMediaItem(newValue, action = 'save') {
         
         updateData.current_units = mediaItem.totalPages || 1;
         updateData.percentage_complete = 100;
-        updateData.status = MediaStatus. COMPLETED;
+        updateData.status = MediaStatus.COMPLETED;
         updateData.date_finished = new Date().toISOString().split('T')[0];
         shouldFinish = true;
     } else if (action === 'dnf') {
-        updateData.status = MediaStatus. ABANDONED;
+        updateData.status = MediaStatus.ABANDONED;
         // Keep current progress, no journal entry for DNF
     }
 
@@ -526,7 +706,7 @@ async function updateMediaItem(newValue, action = 'save') {
 
         if (error) {
             console.error('Error updating media status:', error);
-            alert('Error updating progress:  ' + error.message);
+            alert('Error updating progress: ' + error.message);
             return;
         }
 
@@ -539,7 +719,7 @@ async function updateMediaItem(newValue, action = 'save') {
                 return;
             }
 
-            const { error:  journalError } = await supabase
+            const { error: journalError } = await supabase
                 .from('lu_journal_entry')
                 .insert([{
                     media_status_id: mediaItem.statusId,
@@ -551,6 +731,9 @@ async function updateMediaItem(newValue, action = 'save') {
                 console.error('Error creating journal entry:', journalError);
                 // Don't alert here - the update was successful, this is just logging progress
                 console.warn('Journal entry creation failed, but media status was updated');
+            } else {
+                // Update streaks after successful journal entry
+                await updateStreaks();
             }
         }
 
@@ -1130,6 +1313,27 @@ function initMediaTracker() {
     // This prevents loading data before user is authenticated
 }
 
+const STREAK_TIMEZONE = 'America/New_York';
+
+function getZonedMidnight(dateInput) {
+    // Format date as YYYY-MM-DD in the target time zone
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: STREAK_TIMEZONE,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    });
+
+    const parts = formatter.formatToParts(new Date(dateInput));
+    const y = parts.find(p => p.type === 'year').value;
+    const m = parts.find(p => p.type === 'month').value;
+    const d = parts.find(p => p.type === 'day').value;
+
+    // Create a local Date at midnight for that calendar day
+    return new Date(`${y}-${m}-${d}T00:00:00`);
+}
+
+
 var coll = document.getElementsByClassName("collapsible");
 var i;
 
@@ -1150,6 +1354,7 @@ window.openUpdateModal = openUpdateModal;
 window.trackMedia = trackMedia;
 window.quickComplete = quickComplete;
 window.loadStreaks = loadStreaks;
+window.updateStreaks = updateStreaks;
 window.loadTrackedMedia = loadTrackedMedia; // Export for auth.js to call
 
 // Initialize when DOM is ready, but only if app-container is visible (user is authenticated)
