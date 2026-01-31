@@ -1354,7 +1354,6 @@ window.openUpdateModal = openUpdateModal;
 window.trackMedia = trackMedia;
 window.quickComplete = quickComplete;
 window.loadStreaks = loadStreaks;
-window.updateStreaks = updateStreaks;
 window.loadTrackedMedia = loadTrackedMedia; // Export for auth.js to call
 
 // Initialize when DOM is ready, but only if app-container is visible (user is authenticated)
