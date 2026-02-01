@@ -54,15 +54,8 @@ let currentModalMediaId = null;
 let currentSearchResults = []; // Store current search results for tracking
 let trackedMediaIds = new Set(); // Track which media_ids are already tracked as "in progress"
 
-async function loadStreaks() {
+async function loadStreaks(userId) {
     try {
-        const userId = await getCurrentUserId();
-        if(!userId) {
-            console.log('User not logged in, skipping streak load');
-            hideAllStreaks();
-            return;
-        }
-
         // Get streak data from lu_user_streak table
         const { data: streakData, error: streakError } = await supabase
             .from('lu_user_streak')
@@ -147,14 +140,8 @@ function hideAllStreaks() {
 }
 
 // Calculate and update streaks based on journal entries
-async function updateStreaks() {
+async function updateStreaks(userId) {
     try {
-        const userId = await getCurrentUserId();
-        if (!userId) {
-            console.log('User not logged in, cannot update streaks');
-            return;
-        }
-
         // Get all journal entries for the user
         const { data: journalEntries, error: journalError } = await supabase
             .from('lu_journal_entry')
@@ -232,9 +219,6 @@ async function updateStreaks() {
 
         // Update lu_user_streak table
         await saveStreaksToDatabase(userId, streaks);
-
-        // Reload streaks to update display
-        await loadStreaks();
 
     } catch (err) {
         console.error('Error in updateStreaks:', err);
@@ -436,7 +420,7 @@ async function resetAllStreaks(userId) {
         }
 
         console.log('All streaks reset to 0');
-        await loadStreaks(); // Reload to update display
+        await loadStreaks(userId); // Reload to update display
     } catch (err) {
         console.error('Error resetting streaks:', err);
     }
@@ -520,8 +504,11 @@ async function loadTrackedMedia() {
         console.log('Loaded tracked media:', currentMediaData);
         renderMediaItems(currentMediaData);
 
+        // Update streaks
+        await updateStreaks(userId);
+
         // Load streaks after loading media
-        await loadStreaks();
+        await loadStreaks(userId);
     } catch (err) {
         console.error('Error in loadTrackedMedia:', err);
         alert('Error loading tracked media: ' + (err.message || err));
@@ -731,9 +718,6 @@ async function updateMediaItem(newValue, action = 'save') {
                 console.error('Error creating journal entry:', journalError);
                 // Don't alert here - the update was successful, this is just logging progress
                 console.warn('Journal entry creation failed, but media status was updated');
-            } else {
-                // Update streaks after successful journal entry
-                await updateStreaks();
             }
         }
 
