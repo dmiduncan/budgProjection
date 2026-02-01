@@ -1030,7 +1030,7 @@ function displaySearchResults(results, searchTerm) {
                                 class="button"
                                 ${canQuickComplete ? 'style="display: none;"' : ''}
                                 onclick="quickComplete(${media.id})">
-                            Quick Complete
+                            Retro Finish
                         </button>
                     </div>
                 </div>
