@@ -27,23 +27,11 @@ function calculatePercentage(current, total) {
     return Math.round((current / total) * 100);
 }
 
-// Get OpenLibrary cover URL for books
-function getOpenLibraryCoverUrl(isbn, size = 'M') {
-    if (!isbn) return null;
-    // Remove any dashes or spaces from ISBN
-    const cleanIsbn = isbn.replace(/[-\s]/g, '');
-    return `https://covers.openlibrary.org/b/isbn/${cleanIsbn}-${size}.jpg`;
-}
-
 // Get image URL for media item
 function getMediaImageUrl(media) {
     // Prioritize cover_art_url from database if it exists
     if (media.imageUrl || media.cover_art_url) {
         return media.imageUrl || media.cover_art_url;
-    }
-    // For books, try OpenLibrary if ISBN is available
-    if (media.mediaType === "Book" && media.isbn) {
-        return getOpenLibraryCoverUrl(media.isbn, 'M');
     }
     // Return null to trigger blank image
     return null;
