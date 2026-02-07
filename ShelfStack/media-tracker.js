@@ -44,42 +44,21 @@ let trackedMediaIds = new Set(); // Track which media_ids are already tracked as
 
 async function loadStreaks(userId) {
     try {
-        // Get streak data from lu_user_streak table
-        const { data: streakData, error: streakError } = await supabase
-            .from('lu_user_streak')
-            .select('*')
-            .eq('user_id', userId)
-            .single();
+        const { data, error } = await supabase.rpc('get_or_fix_user_streak', { p_user_id: userId });
 
-        if (streakError) {
-            console.error('Error loading user streaks:', streakError);
+        if (error) {
+            console.error('Error running streak get or fix call.');
             console.error('Error details:', {
-                message: streakError.message,
-                details: streakError.details,
-                hint: streakError.hint,
-                code: streakError.code
+                message: error.message,
+                details: error.details,
+                hint: error.hint,
+                code: error.code
             });
             hideAllStreaks();
             return;
         }
 
-        if (!streakData) {
-            console.log('No streak data found for user');
-            hideAllStreaks();
-            return;
-        }
-
-        console.log('Loaded streak data:', streakData);
-
-        // Update streak bar with values from database
-        updateStreakBar({
-            book: streakData.book_streak_count || 0,
-            manga: streakData.manga_streak_count || 0,
-            anime: streakData.anime_streak_count || 0,
-            'tv show': streakData.tvshow_streak_count || 0,
-            movie: streakData.movie_streak_count || 0
-        });
-
+        updateStreakBar(data);
     } catch (err) {
         console.error('Error in loadStreaks:', err);
         console.error('Error stack:', err.stack);
@@ -93,11 +72,11 @@ function updateStreakBar(streaks) {
 
     // Map media types to their element IDs
     const streakElements = {
-        'book': 'book-count',
-        'manga': 'manga-count',
-        'anime': 'anime-count',
-        'tv show': 'tv-count',
-        'movie': 'movie-count'
+        'book_streak_count': 'book-count',
+        'manga_streak_count': 'manga-count',
+        'anime_streak_count': 'anime-count',
+        'tvshow_streak_count': 'tv-count',
+        'movie_streak_count': 'movie-count'
     };
 
     // Update each streak count and hide/show based on value
@@ -125,293 +104,6 @@ function hideAllStreaks() {
     streakItems.forEach(item => {
         item.style.display = 'none';
     });
-}
-
-// Calculate and update streaks based on journal entries
-async function updateStreaks(userId) {
-    try {
-        // Get all journal entries for the user
-        const { data: journalEntries, error: journalError } = await supabase
-            .from('lu_journal_entry')
-            .select('id, date_created, media_status_id')
-            .eq('user_id', userId)
-            .order('date_created', { ascending: false });
-
-        if (journalError) {
-            console.error('Error loading journal entries:', journalError);
-            return;
-        }
-
-        if (!journalEntries || journalEntries.length === 0) {
-            console.log('No journal entries found');
-            // Set all streaks to 0
-            await resetAllStreaks(userId);
-            return;
-        }
-
-        // Get unique media_status_ids
-        const mediaStatusIds = [...new Set(journalEntries.map(e => e.media_status_id))];
-
-        // Get media_status records
-        const { data: mediaStatusData, error: statusError } = await supabase
-            .from('lu_media_status')
-            .select('id, media_id')
-            .in('id', mediaStatusIds);
-
-        if (statusError) {
-            console.error('Error loading media status:', statusError);
-            return;
-        }
-
-        // Get unique media_ids
-        const mediaIds = [...new Set(mediaStatusData.map(s => s.media_id))];
-
-        // Get media records with types
-        const { data: mediaData, error: mediaError } = await supabase
-            .from('lu_media')
-            .select('id, media_type')
-            .in('id', mediaIds);
-
-        if (mediaError) {
-            console.error('Error loading media:', mediaError);
-            return;
-        }
-
-        // Create lookup maps
-        const statusToMediaId = {};
-        mediaStatusData.forEach(status => {
-            statusToMediaId[status.id] = status.media_id;
-        });
-
-        const mediaIdToType = {};
-        mediaData.forEach(media => {
-            mediaIdToType[media.id] = media.media_type;
-        });
-
-        // Enrich journal entries with media type
-        const enrichedEntries = journalEntries.map(entry => {
-            const mediaId = statusToMediaId[entry.media_status_id];
-            const mediaType = mediaId ? mediaIdToType[mediaId] : null;
-            return {
-                ...entry,
-                media_type: mediaType
-            };
-        }).filter(entry => entry.media_type); // Remove entries without media type
-
-        console.log('Enriched journal entries for streak calculation:', enrichedEntries);
-
-        // Calculate streaks by media type
-        const streaks = calculateStreakCounts(enrichedEntries);
-        
-        console.log('Calculated streaks:', streaks);
-
-        // Update lu_user_streak table
-        await saveStreaksToDatabase(userId, streaks);
-
-    } catch (err) {
-        console.error('Error in updateStreaks:', err);
-        console.error('Error stack:', err.stack);
-    }
-}
-
-// Calculate streak counts for each media type
-function calculateStreakCounts(journalEntries) {
-    // Group entries by media type and date
-    const entriesByTypeAndDate = {};
-    
-    journalEntries.forEach(entry => {
-        const mediaType = entry.media_type;
-        if (!mediaType) return;
-        
-        // Normalize media type to lowercase
-        const normalizedType = mediaType.toLowerCase();
-        
-        // Extract date from timestamp (YYYY-MM-DD format)
-        const entryDate = getZonedMidnight(entry.date_created)
-            .toISOString()
-            .split('T')[0];
-        
-        if (!entriesByTypeAndDate[normalizedType]) {
-            entriesByTypeAndDate[normalizedType] = new Set();
-        }
-        entriesByTypeAndDate[normalizedType].add(entryDate);
-    });
-
-    console.log('Entries by type and date:', entriesByTypeAndDate);
-
-    // Calculate streak for each media type
-    const streaks = {
-        book: 0,
-        manga: 0,
-        anime: 0,
-        'tv show': 0,
-        movie: 0
-    };
-    
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    
-    for (const [mediaType, datesSet] of Object.entries(entriesByTypeAndDate)) {
-        // Convert Set to sorted array (descending - most recent first)
-        const dates = Array.from(datesSet)
-            .map(dateStr => new Date(`${dateStr}T00:00:00`))
-            .sort((a, b) => b - a);
-        
-        if (dates.length === 0) {
-            streaks[mediaType] = 0;
-            continue;
-        }
-        
-        // Check if most recent entry is today or yesterday
-        const mostRecentDate = new Date(dates[0]);
-        mostRecentDate.setHours(0, 0, 0, 0);
-        
-        const daysDiff = Math.floor((today - mostRecentDate) / (1000 * 60 * 60 * 24));
-        
-        console.log(`${mediaType} - Most recent: ${mostRecentDate.toISOString()}, Days diff: ${daysDiff}`);
-        
-        // If the most recent entry is more than 1 day ago, streak is broken
-        if (daysDiff > 1) {
-            streaks[mediaType] = 0;
-            continue;
-        }
-        
-        // Count consecutive days working backwards from most recent
-        let streakCount = 1;
-        let currentDate = new Date(mostRecentDate);
-        
-        for (let i = 1; i < dates.length; i++) {
-            const prevDate = new Date(dates[i]);
-            prevDate.setHours(0, 0, 0, 0);
-            
-            // Calculate expected previous date (one day before current)
-            const expectedPrevDate = new Date(currentDate);
-            expectedPrevDate.setDate(expectedPrevDate.getDate() - 1);
-            expectedPrevDate.setHours(0, 0, 0, 0);
-            
-            console.log(`  Comparing ${prevDate.toISOString()} with expected ${expectedPrevDate.toISOString()}`);
-            
-            // Check if dates are consecutive
-            if (prevDate.getTime() === expectedPrevDate.getTime()) {
-                streakCount++;
-                currentDate = prevDate;
-            } else {
-                // Gap found, stop counting
-                console.log(`  Gap found, stopping at ${streakCount} days`);
-                break;
-            }
-        }
-        
-        streaks[mediaType] = streakCount;
-    }
-    
-    return streaks;
-}
-
-// Save streak counts to database
-async function saveStreaksToDatabase(userId, streaks) {
-    try {
-        const today = new Date().toISOString().split('T')[0];
-        
-        const updateData = {
-            book_streak_count: streaks.book || 0,
-            book_streak_latest_date: today,
-            manga_streak_count: streaks.manga || 0,
-            manga_streak_latest_date: today,
-            anime_streak_count: streaks.anime || 0,
-            anime_streak_latest_date: today,
-            tvshow_streak_count: streaks['tv show'] || 0,
-            tvshow_streak_latest_date:  today,
-            movie_streak_count: streaks.movie || 0,
-            movie_streak_latest_date: today
-        };
-
-        // Check if record exists
-        const { data: existingRecord, error: checkError } = await supabase
-            .from('lu_user_streak')
-            .select('id')
-            .eq('user_id', userId)
-            .single();
-
-        if (existingRecord && !checkError) {
-            // Update existing record
-            const { error: updateError } = await supabase
-                .from('lu_user_streak')
-                .update(updateData)
-                .eq('user_id', userId);
-
-            if (updateError) {
-                console.error('Error updating streaks:', updateError);
-            } else {
-                console.log('Streaks updated successfully');
-            }
-        } else {
-            // Insert new record
-            const { error: insertError } = await supabase
-                .from('lu_user_streak')
-                .insert([{
-                    user_id: userId,
-                    ...updateData
-                }]);
-
-            if (insertError) {
-                console.error('Error inserting streaks:', insertError);
-            } else {
-                console.log('Streaks inserted successfully');
-            }
-        }
-    } catch (err) {
-        console.error('Error saving streaks to database:', err);
-    }
-}
-
-// Reset all streaks to 0
-async function resetAllStreaks(userId) {
-    try {
-        const updateData = {
-            book_streak_count: 0,
-            book_streak_latest_date: null,
-            manga_streak_count: 0,
-            manga_streak_latest_date: null,
-            anime_streak_count: 0,
-            anime_streak_latest_date: null,
-            tvshow_streak_count: 0,
-            tvshow_streak_latest_date: null,
-            movie_streak_count: 0,
-            movie_streak_latest_date: null
-        };
-
-        // Check if record exists
-        const { data: existingRecord } = await supabase
-            .from('lu_user_streak')
-            .select('id')
-            .eq('user_id', userId)
-            .single();
-
-        if (existingRecord) {
-            // Update existing record
-            await supabase
-                .from('lu_user_streak')
-                .update(updateData)
-                .eq('user_id', userId);
-        } else {
-            // Insert new record with zeros
-            await supabase
-                .from('lu_user_streak')
-                .insert([{
-                    user_id: userId,
-                    ...updateData
-                }]);
-        }
-
-        console.log('All streaks reset to 0');
-        await loadStreaks(userId); // Reload to update display
-    } catch (err) {
-        console.error('Error resetting streaks:', err);
-    }
 }
 
 // Load tracked media from lu_media_status
@@ -492,9 +184,6 @@ async function loadTrackedMedia() {
         console.log('Loaded tracked media:', currentMediaData);
         renderMediaItems(currentMediaData);
 
-        // Update streaks
-        await updateStreaks(userId);
-
         // Load streaks after loading media
         await loadStreaks(userId);
     } catch (err) {
@@ -502,18 +191,6 @@ async function loadTrackedMedia() {
         alert('Error loading tracked media: ' + (err.message || err));
     }
 }
-
-// Get progress label based on media type
-function getProgressLabel(mediaType) {
-    if (mediaType === "Book") {
-        return "Page";
-    } else if (mediaType === "TV Show") {
-        return "Episode";
-    } else {
-        return "Progress";
-    }
-}
-
 
 // Render media items
 function renderMediaItems(mediaArray) {
@@ -706,6 +383,12 @@ async function updateMediaItem(newValue, action = 'save') {
                 console.error('Error creating journal entry:', journalError);
                 // Don't alert here - the update was successful, this is just logging progress
                 console.warn('Journal entry creation failed, but media status was updated');
+            }
+            else {
+                await supabase.rpc('update_user_streak_for_media_type', {
+                    p_user_id: userId,
+                    p_media_type: mediaItem.mediaType
+                    });
             }
         }
 
@@ -925,11 +608,6 @@ function getUnitLabel(mediaType) {
     };
     const normalizedType = (mediaType || '').toLowerCase().trim();
     return typeMap[normalizedType] || 'units';
-}
-
-function formatUnitDisplay(mediaType, totalUnits) {
-    const label = getUnitLabel(mediaType);
-    return `${totalUnits} ${label}`;
 }
 
 // Display search results in modal
@@ -1283,42 +961,6 @@ function initMediaTracker() {
 
     // Don't load tracked media here - wait for auth.js to call it after authentication
     // This prevents loading data before user is authenticated
-}
-
-const STREAK_TIMEZONE = 'America/New_York';
-
-function getZonedMidnight(dateInput) {
-    // Format date as YYYY-MM-DD in the target time zone
-    const formatter = new Intl.DateTimeFormat('en-CA', {
-        timeZone: STREAK_TIMEZONE,
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-    });
-
-    const parts = formatter.formatToParts(new Date(dateInput));
-    const y = parts.find(p => p.type === 'year').value;
-    const m = parts.find(p => p.type === 'month').value;
-    const d = parts.find(p => p.type === 'day').value;
-
-    // Create a local Date at midnight for that calendar day
-    return new Date(`${y}-${m}-${d}T00:00:00`);
-}
-
-
-var coll = document.getElementsByClassName("collapsible");
-var i;
-
-for (i = 0; i < coll.length; i++) {
-  coll[i].addEventListener("click", function() {
-    this.classList.toggle("active");
-    var content = this.nextElementSibling;
-    if (content.style.display === "block") {
-      content.style.display = "none";
-    } else {
-      content.style.display = "block";
-    }
-  });
 }
 
 // Make functions available globally for onclick handlers
