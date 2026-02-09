@@ -2,6 +2,8 @@
 // Import Supabase from auth.js (which has the ShelfStack credentials)
 import { supabase } from './auth.js';
 
+let hasLoadedTrackedMedia = false;
+
 // Helper function to get current user ID
 async function getCurrentUserId() {
     const { data: { user }, error } = await supabase.auth.getUser();
@@ -108,6 +110,12 @@ function hideAllStreaks() {
 
 // Load tracked media from lu_media_status
 async function loadTrackedMedia() {
+    if (hasLoadedTrackedMedia) {
+        return;
+    }
+    
+    hasLoadedTrackedMedia = true;
+
     try {
         // Get current user ID
         const userId = await getCurrentUserId();
