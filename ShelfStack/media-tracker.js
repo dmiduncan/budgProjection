@@ -397,6 +397,8 @@ async function updateMediaItem(newValue, action = 'save') {
                     p_user_id: userId,
                     p_media_type: mediaItem.mediaType
                     });
+
+                hasLoadedTrackedMedia = false;
             }
         }
 
