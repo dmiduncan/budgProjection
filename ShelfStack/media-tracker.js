@@ -237,7 +237,7 @@ function renderMediaItems(mediaArray) {
                             ${media.currentPage || 0}/${media.totalPages || 1} ${progressLabelText}
                             ${media.series ? `
                                 <span class="series-tooltip">
-                                    Series: ${media.series.currentSeriesUnits || 0}/${media.series.totalSeriesUnits || 1}
+                                    Series Completed: ${media.series.currentSeriesUnits || 0}/${media.series.totalSeriesUnits || 1}
                                     ${seriesProgressLabelText}
                                 </span>
                             ` : ''}
