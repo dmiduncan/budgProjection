@@ -113,10 +113,11 @@ async function loadTrackedMedia() {
     if (hasLoadedTrackedMedia) {
         return;
     }
-    
+
     hasLoadedTrackedMedia = true;
 
     try {
+        // TODO: Move this to a grabbed once global value and cleared on log out
         // Get current user ID
         const userId = await getCurrentUserId();
         if (!userId) {
@@ -124,13 +125,10 @@ async function loadTrackedMedia() {
             return;
         }
 
-        // Get all media_status records with status = "in progress" for current user
-        const { data: statusData, error: statusError } = await supabase
-            .from('lu_media_status')
-            .select('*')
-            .eq('status', MediaStatus.IN_PROGRESS)
-            .eq('user_id', userId)
-            .order('date_updated', { ascending: false });
+        const { data: statusData, error: statusError } = await supabase.rpc('get_media_with_status_and_series', { 
+            p_user_id: userId,
+            p_status: MediaStatus.IN_PROGRESS
+        });
 
         if (statusError) {
             console.error('Error loading media status:', statusError);
@@ -147,47 +145,29 @@ async function loadTrackedMedia() {
         }
 
         // Get media_ids to fetch from lu_media
-        const mediaIds = statusData.map(s => s.media_id);
+        const mediaIds = statusData.map(s => s.id);
         trackedMediaIds = new Set(mediaIds);
 
-        // Fetch media details from lu_media
-        const { data: mediaData, error: mediaError } = await supabase
-            .from('lu_media')
-            .select('*')
-            .in('id', mediaIds);
-
-        if (mediaError) {
-            console.error('Error loading media details:', mediaError);
-            alert('Error loading media details: ' + mediaError.message);
-            return;
-        }
-
-        // Combine status data with media data
-        currentMediaData = statusData.map(statusItem => {
-            const mediaItem = mediaData.find(m => m.id === statusItem.media_id);
-            if (!mediaItem) {
-                console.warn('Media not found for status item:', statusItem);
-                return null;
-            }
-
-            // Map to our app structure
-            return {
-                id: mediaItem.id,
-                statusId: statusItem.id, // Store the status record ID for updates
-                title: mediaItem.text || mediaItem.title || mediaItem.name || '',
-                writer: mediaItem.writer || '',
-                mediaType: mediaItem.media_type || mediaItem.mediaType || '',
-                totalPages: mediaItem.num_units || mediaItem.numUnits || 1,
-                currentPage: statusItem.current_units || 0,
-                percentageComplete: statusItem.percentage_complete || calculatePercentage(statusItem.current_units || 0, mediaItem.num_units || 1),
-                status: MediaStatus.IN_PROGRESS,
-                imageUrl: mediaItem.cover_art_url || mediaItem.coverArtUrl || null,
-                format: mediaItem.format || null,
-                rating: statusItem.rating || null,
-                dateStarted: statusItem.date_started || null,
-                dateFinished: statusItem.date_finished || null
-            };
-        }).filter(item => item !== null); // Remove any null entries
+        currentMediaData = statusData.map(item => ({
+            id: item.id,
+            statusId: item.status_id,
+            title: item.title || '',
+            writer: item.writer || '',
+            mediaType: item.media_type || '',
+            totalPages: item.total_pages || 1,
+            currentPage: item.current_page || 0,
+            percentageComplete: item.percentage_complete || 0,
+            status: item.status,
+            imageUrl: item.image_url || null,
+            dateUpdated: item.date_updated,
+            series: item.series_id ? {
+                id: item.series_id,
+                name: item.series_name,
+                description: item.series_description,
+                currentSeriesUnits: item.series_total_current_units,
+                totalSeriesUnits: item.series_total_units
+            } : null
+        }));
 
         console.log('Loaded tracked media:', currentMediaData);
         renderMediaItems(currentMediaData);
@@ -218,6 +198,7 @@ function renderMediaItems(mediaArray) {
         container.dataset.mediaId = media.id;
 
         const progressLabelText = getUnitLabel(media.mediaType);
+        const seriesProgressLabelText = getSeriesLabel(media.mediaType);
 
         const imageUrl = getMediaImageUrl(media);
         const hasImage = imageUrl && imageUrl.trim() !== '';
@@ -260,6 +241,11 @@ function renderMediaItems(mediaArray) {
                         </div>
                     </div>
                 </div>
+                ${media.series ? `
+                    <div class="media-info-row">
+                        <div class="media-detail"><strong>Series:</strong> ${media.series.currentSeriesUnits || 0}/${media.series.totalSeriesUnits || 1} ${seriesProgressLabelText}</div>
+                    </div>
+                ` : ''}
                 <div class="media-info-row">
                     <button type="button" class="button update-button" onclick="openUpdateModal(${media.id})">Details</button>
                 </div>
@@ -440,6 +426,11 @@ function closeConfirmationModal() {
 }
 
 // Open search results modal
+/** 
+    TODO: look into making this better for a auto-complete. Perhaps the solution is have a globally stored list of media and filter down with each letter typed and show a certain number of them.
+    TODO: then when the button is pressed to search it will complete a new seach with filter included to limit the returned results.
+    TODO: OR on page load pull all media basics that are filterable and search just filters on that list
+*/
 async function openSearchModal() {
     const searchInput = document.getElementById('search-input');
     if (!searchInput) return;
@@ -452,6 +443,7 @@ async function openSearchModal() {
     }
 
     try {
+        // TODO: Move this to a globally stored value so it is not regrabbed with each call.
         // Get current user ID first
         const userId = await getCurrentUserId();
         if (!userId) {
@@ -615,6 +607,18 @@ function getUnitLabel(mediaType) {
         'tv show': 'episodes',
         'anime': 'episodes',
         'movie': 'minutes'
+    };
+    const normalizedType = (mediaType || '').toLowerCase().trim();
+    return typeMap[normalizedType] || 'units';
+}
+
+function getSeriesLabel(mediaType) {
+    const typeMap = {
+        'book':  'books',
+        'manga': 'chapters',
+        'tv show': 'episodes',
+        'anime': 'episodes',
+        'movie': 'movies'
     };
     const normalizedType = (mediaType || '').toLowerCase().trim();
     return typeMap[normalizedType] || 'units';
@@ -838,7 +842,7 @@ async function trackMedia(mediaId) {
 
         // Add to tracked set
         trackedMediaIds.add(mediaId);
-
+        hasLoadedTrackedMedia = false;
         // Reload tracked media to refresh the display
         await loadTrackedMedia();
 
