@@ -406,6 +406,56 @@
             opacity: 1;
         }
 
+        .progress-with-tooltip {
+            position: relative;
+            cursor: default;
+        }
+
+        .series-tooltip {
+            position: absolute;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+
+            background: #2a2f4a;           /* match streak tooltip bg */
+            color: #e8eaff;
+            border: 1px solid #3a3f66;
+
+            padding: 6px 10px;
+            border-radius: 6px;
+
+            font-size: 0.8rem;
+            font-weight: 500;
+            line-height: 1.2;
+            white-space: nowrap;
+
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+
+            transition: opacity 0.15s ease, transform 0.15s ease;
+            z-index: 20;
+        }
+
+        series-tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+
+            border-width: 6px;
+            border-style: solid;
+            border-color: #2a2f4a transparent transparent transparent;
+        }
+
+        .progress-with-tooltip:hover .series-tooltip {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(-4px);
+        }
+
+
     </style>
 </head>
 <body>

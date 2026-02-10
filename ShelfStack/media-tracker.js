@@ -231,7 +231,18 @@ function renderMediaItems(mediaArray) {
                     <div class="media-detail"><strong>Type:</strong> ${media.mediaType}</div>
                 </div>
                 <div class="media-info-row">
-                    <div class="media-detail"><strong>Progress:</strong> ${media.currentPage || 0}/${media.totalPages || 1} ${progressLabelText}</div>
+                    <div class="media-detail">
+                        <strong>Progress:</strong>
+                        <span class="progress-with-tooltip">
+                            ${media.currentPage || 0}/${media.totalPages || 1} ${progressLabelText}
+                            ${media.series ? `
+                                <span class="series-tooltip">
+                                    Series: ${media.series.currentSeriesUnits || 0}/${media.series.totalSeriesUnits || 1}
+                                    ${seriesProgressLabelText}
+                                </span>
+                            ` : ''}
+                        </span>
+                    </div>
                 </div>
                 <div class="media-info-row">
                     <div class="progress-container">
@@ -241,11 +252,6 @@ function renderMediaItems(mediaArray) {
                         </div>
                     </div>
                 </div>
-                ${media.series ? `
-                    <div class="media-info-row">
-                        <div class="media-detail"><strong>Series:</strong> ${media.series.currentSeriesUnits || 0}/${media.series.totalSeriesUnits || 1} ${seriesProgressLabelText}</div>
-                    </div>
-                ` : ''}
                 <div class="media-info-row">
                     <button type="button" class="button update-button" onclick="openUpdateModal(${media.id})">Details</button>
                 </div>
