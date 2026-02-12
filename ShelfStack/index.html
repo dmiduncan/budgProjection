@@ -492,6 +492,38 @@
             visibility: visible;
             transform: translateX(-50%) translateY(-4px);
         }
+
+        .search-input-wrapper {
+            position: relative;
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .search-input-wrapper .search-input {
+            width: 100%;
+            padding-right: 2.5em;
+            box-sizing: border-box;
+        }
+
+        .search-icon-btn {
+            position: absolute !important;
+            right: 0.5em;
+            top: 50%;
+            transform: translateY(-50%);
+            padding: 0 !important;
+            width: 1.5em;
+            height: 1.5em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: rgba(244, 244, 255, 0.5);
+            transition: color 0.2s ease !important;
+        }
+
+        .search-icon-btn:hover {
+            color: rgba(244, 244, 255, 0.9) !important;
+            background-color: transparent !important;
+        }
     </style>
 </head>
 <body>
@@ -522,8 +554,15 @@
             </div>
         </div>
         <div class="search-container">
-            <input type="text" id="search-input" class="search-input" placeholder="Search for media...">
-            <button type="button" id="search-btn" class="button">Search</button>
+            <div class="search-input-wrapper">
+                <input type="text" id="search-input" class="search-input" placeholder="Search for media...">
+                <button type="button" id="search-btn" class="search-icon-btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"/>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    </svg>
+                </button>
+            </div>
         </div>
         <div id="media-list">
             <!-- Media items will be dynamically inserted here -->
