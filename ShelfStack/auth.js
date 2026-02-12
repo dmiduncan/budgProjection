@@ -19,8 +19,19 @@ authContainer.innerHTML = `\
   </div>
   <button id="login-btn">Login</button>
   <button id="signup-btn">Sign Up</button>
-  <button id="logout-btn" style="display:none;">Logout</button>
-  <button type="button" id="home-btn" onclick="window.location.href='../'">Home</button>
+  <button id="logout-btn" style="display:none;">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+          <polyline points="16 17 21 12 16 7"/>
+          <line x1="21" y1="12" x2="9" y2="12"/>
+      </svg>
+  </button>
+  <button type="button" id="home-btn" onclick="window.location.href='../'">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z"/>
+          <path d="M9 21V12h6v9"/>
+      </svg>
+  </button>
   <br><br>
 `
 document.body.prepend(authContainer)
