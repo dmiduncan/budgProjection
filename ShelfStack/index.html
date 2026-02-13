@@ -524,6 +524,61 @@
             color: rgba(244, 244, 255, 0.9) !important;
             background-color: transparent !important;
         }
+
+        /* Autocomplete dropdown styles */
+        .autocomplete-container {
+            position: relative;
+            width: 100%;
+        }
+
+        .autocomplete-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: #2a2f4a;
+            border: solid 1px rgba(212, 212, 255, 0.1);
+            border-top: none;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+            margin-top: 2px;
+        }
+
+        .autocomplete-dropdown.active {
+            display: block;
+        }
+
+        .autocomplete-item {
+            padding: 0.75em 1em;
+            cursor: pointer;
+            border-bottom: solid 1px rgba(212, 212, 255, 0.05);
+            transition: background-color 0.2s ease;
+        }
+
+        .autocomplete-item:hover {
+            background-color: rgba(212, 212, 255, 0.1);
+        }
+
+        .autocomplete-item:last-child {
+            border-bottom: none;
+        }
+
+        .autocomplete-item-title {
+            font-weight: 600;
+            font-size: 0.95em;
+            margin-bottom: 0.25em;
+        }
+
+        .autocomplete-item-details {
+            font-size: 0.85em;
+            color: rgba(244, 244, 255, 0.7);
+        }
+
+        .autocomplete-item-details strong {
+            color: rgba(244, 244, 255, 0.9);
+        }
     </style>
 </head>
 <body>
@@ -554,7 +609,7 @@
             </div>
         </div>
         <div class="search-container">
-            <div class="search-input-wrapper">
+            <div class="search-input-wrapper autocomplete-container">
                 <input type="text" id="search-input" class="search-input" placeholder="Search for media...">
                 <button type="button" id="search-btn" class="search-icon-btn">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -562,6 +617,7 @@
                         <line x1="21" y1="21" x2="16.65" y2="16.65"/>
                     </svg>
                 </button>
+                <div id="autocomplete-dropdown" class="autocomplete-dropdown"></div>
             </div>
         </div>
         <div id="media-list">
