@@ -60,6 +60,8 @@ BEGIN
     WHERE 
         (p_user_id IS NULL OR ms.user_id = p_user_id)
         AND (p_status IS NULL OR ms.status = p_status)
-    ORDER BY ms.date_updated DESC;
+    ORDER BY 
+        CASE WHEN ms.current_units > 0 THEN 0 ELSE 1 END,
+        ms.date_updated DESC
 END;
 $$;
