@@ -555,6 +555,10 @@
             cursor: pointer;
             border-bottom: solid 1px rgba(212, 212, 255, 0.05);
             transition: background-color 0.2s ease;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1em;
         }
 
         .autocomplete-item:hover {
@@ -563,6 +567,11 @@
 
         .autocomplete-item:last-child {
             border-bottom: none;
+        }
+
+        .autocomplete-item-content {
+            flex: 1;
+            min-width: 0;
         }
 
         .autocomplete-item-title {
@@ -578,6 +587,38 @@
 
         .autocomplete-item-details strong {
             color: rgba(244, 244, 255, 0.9);
+        }
+
+        .autocomplete-item-track {
+            display: flex;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .autocomplete-tracked-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #9bf1ff;
+            width: 28px;
+            height: 28px;
+        }
+
+        .autocomplete-tracked-icon svg {
+            display: block;
+        }
+
+        .autocomplete-track-btn {
+            padding: 0.4em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 28px;
+            height: 28px;
+        }
+
+        .autocomplete-track-btn svg {
+            display: block;
         }
     </style>
 </head>

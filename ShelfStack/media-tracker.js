@@ -774,20 +774,52 @@ function displayAutocompleteSuggestions(suggestions) {
     dropdown.innerHTML = '';
     
     suggestions.forEach(item => {
+        const isTracked = trackedMediaIds.has(item.id);
         const suggestionItem = document.createElement('div');
         suggestionItem.className = 'autocomplete-item';
         suggestionItem.dataset.mediaId = item.id;
         
         suggestionItem.innerHTML = `
-            <div class="autocomplete-item-title">${item.title}</div>
-            <div class="autocomplete-item-details">
-                ${item.writer ? `<strong>Writer:</strong> ${item.writer} • ` : ''}
-                <strong>Type:</strong> ${item.mediaType}
+            <div class="autocomplete-item-content">
+                <div class="autocomplete-item-title">${item.title}</div>
+                <div class="autocomplete-item-details">
+                    ${item.writer ? `<strong>Writer:</strong> ${item.writer} • ` : ''}
+                    <strong>Type:</strong> ${item.mediaType}
+                </div>
+            </div>
+            <div class="autocomplete-item-track">
+                ${isTracked ? `<span class="autocomplete-tracked-icon" title="Already Tracked">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                </span>` : ''}
+                ${!isTracked ? `<button type="button" 
+                        class="button autocomplete-track-btn" 
+                        data-media-id="${item.id}"
+                        title="Track">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19"/>
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                </button>` : ''}
             </div>
         `;
 
-        // Handle click on suggestion
-        suggestionItem.addEventListener('click', () => {
+        // Handle click on track button
+        const trackButton = suggestionItem.querySelector('.autocomplete-track-btn');
+        if (trackButton) {
+            trackButton.addEventListener('click', (e) => {
+                e.stopPropagation();
+                trackMedia(item.id);
+            });
+        }
+
+        // Handle click on suggestion (but not on the track button)
+        suggestionItem.addEventListener('click', (e) => {
+            // Don't open modal if clicking on the track button
+            if (e.target.closest('.autocomplete-track-btn')) {
+                return;
+            }
             const searchInput = domCache.searchInput || document.getElementById('search-input');
             if (searchInput) {
                 searchInput.value = item.title;
@@ -839,8 +871,11 @@ function handleAutocompleteInput() {
 
 // Track a media item (insert/update lu_media_status)
 async function trackMedia(mediaId) {
-    // Find the media item in current search results
-    const mediaItem = currentSearchResults.find(m => m.id === mediaId);
+    // Find the media item in current search results or allMediaItems
+    let mediaItem = currentSearchResults.find(m => m.id === mediaId);
+    if (!mediaItem) {
+        mediaItem = allMediaItems.find(m => m.id === mediaId);
+    }
     if (!mediaItem) {
         alert('Media item not found. Please search again.');
         return;
@@ -916,10 +951,20 @@ async function trackMedia(mediaId) {
         // Reload tracked media to refresh the display
         await loadTrackedMedia();
 
-        // Update search results to show it's now tracked
+        // Update search results or autocomplete dropdown to show it's now tracked
         const searchInput = domCache.searchInput || document.getElementById('search-input');
+        const dropdown = domCache.autocompleteDropdown || document.getElementById('autocomplete-dropdown');
+        
         if (searchInput && searchInput.value.trim() !== '') {
-            openSearchModal(); // Refresh search results
+            // Check if autocomplete dropdown is open
+            if (dropdown && dropdown.classList.contains('active')) {
+                // Refresh autocomplete dropdown
+                const suggestions = filterMediaForAutocomplete(searchInput.value.trim());
+                displayAutocompleteSuggestions(suggestions);
+            } else {
+                // Refresh search results modal
+                openSearchModal();
+            }
         } else {
             closeSearchModal();
         }
