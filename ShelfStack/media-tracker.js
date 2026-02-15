@@ -4,14 +4,26 @@ import { supabase } from './auth.js';
 
 let hasLoadedTrackedMedia = false;
 
-// Helper function to get current user ID
+// Helper function to get current user ID (cached)
 async function getCurrentUserId() {
+    // Return cached value if available
+    if (cachedUserId !== null) {
+        return cachedUserId;
+    }
+    
     const { data: { user }, error } = await supabase.auth.getUser();
     if (error || !user) {
         console.error('Error getting user:', error);
         return null;
     }
-    return user.id;
+    
+    cachedUserId = user.id;
+    return cachedUserId;
+}
+
+// Clear cached user ID (call on logout)
+function clearCachedUserId() {
+    cachedUserId = null;
 }
 
 // Media Status Enumeration
@@ -44,6 +56,25 @@ let currentModalMediaId = null;
 let currentSearchResults = []; // Store current search results for tracking
 let trackedMediaIds = new Set(); // Track which media_ids are already tracked as "in progress"
 let allMediaItems = []; // Global list of all media for autocomplete
+let cachedUserId = null; // Cache user ID to avoid repeated API calls
+
+// Cache for frequently accessed DOM elements
+const domCache = {
+    searchInput: null,
+    autocompleteDropdown: null,
+    mediaList: null,
+    updateModal: null,
+    searchModal: null
+};
+
+// Initialize DOM cache
+function initDOMCache() {
+    domCache.searchInput = document.getElementById('search-input');
+    domCache.autocompleteDropdown = document.getElementById('autocomplete-dropdown');
+    domCache.mediaList = document.getElementById('media-list');
+    domCache.updateModal = document.getElementById('update-modal');
+    domCache.searchModal = document.getElementById('search-modal');
+}
 
 async function loadStreaks(userId) {
     try {
@@ -144,8 +175,8 @@ async function loadAllMediaItems() {
 }
 
 // Load tracked media from lu_media_status
-async function loadTrackedMedia() {
-    if (hasLoadedTrackedMedia) {
+async function loadTrackedMedia(forceReload = false) {
+    if (hasLoadedTrackedMedia && !forceReload) {
         return;
     }
 
@@ -222,7 +253,7 @@ async function loadTrackedMedia() {
 
 // Render media items
 function renderMediaItems(mediaArray) {
-    const mediaList = document.getElementById('media-list');
+    const mediaList = domCache.mediaList || document.getElementById('media-list');
     if (!mediaList) return;
 
     mediaList.innerHTML = '';
@@ -308,7 +339,7 @@ function openUpdateModal(mediaId) {
     if (!mediaItem) return;
 
     currentModalMediaId = mediaId;
-    const modal = document.getElementById('update-modal');
+    const modal = domCache.updateModal || document.getElementById('update-modal');
     const progressLabel = document.getElementById('current-progress-label');
     const progressValue = document.getElementById('current-progress-value');
     const updateInput = document.getElementById('modal-update-input');
@@ -329,8 +360,10 @@ function openUpdateModal(mediaId) {
 
 // Close update modal
 function closeUpdateModal() {
-    const modal = document.getElementById('update-modal');
-    modal.classList.remove('active');
+    const modal = domCache.updateModal || document.getElementById('update-modal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
     currentModalMediaId = null;
 }
 
@@ -404,8 +437,7 @@ async function updateMediaItem(newValue, action = 'save') {
 
         // Add journal entry if units changed (for save or finish actions)
         if ((action === 'save' || action === 'finish') && journalUnits !== 0) {
-            // Get current user ID
-            const userId = await getCurrentUserId();
+            // Use already fetched userId instead of calling getCurrentUserId again
             if (!userId) {
                 console.error('Cannot create journal entry: user not authenticated');
                 return;
@@ -435,12 +467,8 @@ async function updateMediaItem(newValue, action = 'save') {
         }
 
         // If status changed to completed or abandoned, reload to remove from in-progress list
-        if (action === 'finish' || action === 'dnf' || shouldFinish) {
-            await loadTrackedMedia();
-        } else {
-            // Just reload to refresh the display
-            await loadTrackedMedia();
-        }
+        // Otherwise, just refresh the display
+        await loadTrackedMedia(true); // Force reload to get updated data
 
         closeUpdateModal();
     } catch (err) {
@@ -473,11 +501,11 @@ function closeConfirmationModal() {
 
 // Open search results modal
 async function openSearchModal() {
-    const searchInput = document.getElementById('search-input');
+    const searchInput = domCache.searchInput || document.getElementById('search-input');
     if (!searchInput) return;
 
     // Hide autocomplete dropdown when opening search modal
-    const dropdown = document.getElementById('autocomplete-dropdown');
+    const dropdown = domCache.autocompleteDropdown || document.getElementById('autocomplete-dropdown');
     if (dropdown) {
         dropdown.classList.remove('active');
     }
@@ -508,16 +536,18 @@ async function openSearchModal() {
         }
 
         // Filter results using the global allMediaItems array
+        // Pre-compute lowercase search term once
         const searchLower = searchTerm.toLowerCase().trim();
         
         const filteredData = allMediaItems.filter(item => {
-            const titleField = (item.title || '').toLowerCase();
-            const writerField = (item.writer || '').toLowerCase();
-            const mediaTypeField = (item.mediaType || '').toLowerCase();
+            // Use includes() directly on lowercase strings for better performance
+            const title = item.title || '';
+            const writer = item.writer || '';
+            const mediaType = item.mediaType || '';
             
-            return titleField.includes(searchLower) ||
-                   writerField.includes(searchLower) ||
-                   mediaTypeField.includes(searchLower);
+            return title.toLowerCase().includes(searchLower) ||
+                   writer.toLowerCase().includes(searchLower) ||
+                   mediaType.toLowerCase().includes(searchLower);
         });
 
         if (filteredData.length === 0) {
@@ -694,7 +724,7 @@ function displaySearchResults(results, searchTerm) {
 
 // Close search modal
 function closeSearchModal() {
-    const modal = document.getElementById('search-modal');
+    const modal = domCache.searchModal || document.getElementById('search-modal');
     if (modal) {
         modal.classList.remove('active');
     }
@@ -711,13 +741,14 @@ function filterMediaForAutocomplete(searchTerm) {
 
     const filtered = allMediaItems
         .filter(item => {
-            const titleField = (item.title || '').toLowerCase();
-            const writerField = (item.writer || '').toLowerCase();
-            const mediaTypeField = (item.mediaType || '').toLowerCase();
+            // Optimize: only call toLowerCase() when needed, not on every field
+            const title = item.title || '';
+            const writer = item.writer || '';
+            const mediaType = item.mediaType || '';
             
-            return titleField.includes(searchLower) ||
-                   writerField.includes(searchLower) ||
-                   mediaTypeField.includes(searchLower);
+            return title.toLowerCase().includes(searchLower) ||
+                   writer.toLowerCase().includes(searchLower) ||
+                   mediaType.toLowerCase().includes(searchLower);
         });
 
     // Sort results by title ascending (case-insensitive, with numeric sorting)
@@ -732,7 +763,7 @@ function filterMediaForAutocomplete(searchTerm) {
 
 // Display autocomplete suggestions
 function displayAutocompleteSuggestions(suggestions) {
-    const dropdown = document.getElementById('autocomplete-dropdown');
+    const dropdown = domCache.autocompleteDropdown || document.getElementById('autocomplete-dropdown');
     if (!dropdown) return;
 
     if (suggestions.length === 0) {
@@ -757,7 +788,7 @@ function displayAutocompleteSuggestions(suggestions) {
 
         // Handle click on suggestion
         suggestionItem.addEventListener('click', () => {
-            const searchInput = document.getElementById('search-input');
+            const searchInput = domCache.searchInput || document.getElementById('search-input');
             if (searchInput) {
                 searchInput.value = item.title;
                 dropdown.classList.remove('active');
@@ -774,76 +805,37 @@ function displayAutocompleteSuggestions(suggestions) {
     dropdown.classList.add('active');
 }
 
-// Handle autocomplete input
+// Debounce function for autocomplete
+let autocompleteDebounceTimer = null;
+const AUTOCOMPLETE_DEBOUNCE_MS = 150; // Delay before showing autocomplete
+
+// Handle autocomplete input with debouncing
 function handleAutocompleteInput() {
-    const searchInput = document.getElementById('search-input');
+    const searchInput = domCache.searchInput || document.getElementById('search-input');
     if (!searchInput) return;
 
-    const searchTerm = searchInput.value.trim();
-    
-    if (searchTerm.length === 0) {
-        const dropdown = document.getElementById('autocomplete-dropdown');
-        if (dropdown) {
-            dropdown.classList.remove('active');
-        }
-        return;
+    // Clear existing timer
+    if (autocompleteDebounceTimer) {
+        clearTimeout(autocompleteDebounceTimer);
     }
 
-    const suggestions = filterMediaForAutocomplete(searchTerm);
-    displayAutocompleteSuggestions(suggestions);
-}
-
-// Add lu_media_status entry without adding journal entries
-async function quickComplete(mediaId) {
-    // Find the media item in current search results
-    const mediaItem = currentSearchResults.find(m => m.id === mediaId);
-    if (!mediaItem) {
-        alert('Media item not found. Please search again.');
-        return;
-    }
-
-    try {
-        // Get current user ID
-        const userId = await getCurrentUserId();
-        if (!userId) {
-            alert('You must be logged in to track media.');
-            return;
-        }
-
-        const statusData = {
-            media_id: mediaId,
-            user_id: userId,
-            status: MediaStatus.COMPLETED,
-            current_units: mediaItem.totalUnits,
-            percentage_complete: 100,
-            date_started: '2000-01-01' // default date in the past
-        };
-
-        // Insert new record
-        const { data, error } = await supabase
-            .from('lu_media_status')
-            .insert([statusData])
-            .select()
-            .single();
-
-        if (error) {
-            console.error('Error inserting media status:', error);
-            alert('Error tracking media: ' + error.message);
-            return;
-        }
+    // Set new timer
+    autocompleteDebounceTimer = setTimeout(() => {
+        const searchTerm = searchInput.value.trim();
         
-        // Update search results to show it's now tracked
-        const searchInput = document.getElementById('search-input');
-        if (searchInput && searchInput.value.trim() !== '') {
-            openSearchModal(); // Refresh search results
-        } else {
-            closeSearchModal();
+        if (searchTerm.length === 0) {
+            const dropdown = domCache.autocompleteDropdown || document.getElementById('autocomplete-dropdown');
+            if (dropdown) {
+                dropdown.classList.remove('active');
+            }
+            return;
         }
-    } catch (err) {
-        console.error('Error in quickComplete:', err);
-        alert('Error during quick complete: ' + (err.message || err));
-    }
+
+        const suggestions = filterMediaForAutocomplete(searchTerm);
+        displayAutocompleteSuggestions(suggestions);
+    }, AUTOCOMPLETE_DEBOUNCE_MS);
 }
+
 
 // Track a media item (insert/update lu_media_status)
 async function trackMedia(mediaId) {
@@ -925,7 +917,7 @@ async function trackMedia(mediaId) {
         await loadTrackedMedia();
 
         // Update search results to show it's now tracked
-        const searchInput = document.getElementById('search-input');
+        const searchInput = domCache.searchInput || document.getElementById('search-input');
         if (searchInput && searchInput.value.trim() !== '') {
             openSearchModal(); // Refresh search results
         } else {
@@ -934,6 +926,58 @@ async function trackMedia(mediaId) {
     } catch (err) {
         console.error('Error in trackMedia:', err);
         alert('Error tracking media: ' + (err.message || err));
+    }
+}
+
+// Add lu_media_status entry without adding journal entries
+async function quickComplete(mediaId) {
+    // Find the media item in current search results
+    const mediaItem = currentSearchResults.find(m => m.id === mediaId);
+    if (!mediaItem) {
+        alert('Media item not found. Please search again.');
+        return;
+    }
+
+    try {
+        // Get current user ID
+        const userId = await getCurrentUserId();
+        if (!userId) {
+            alert('You must be logged in to track media.');
+            return;
+        }
+
+        const statusData = {
+            media_id: mediaId,
+            user_id: userId,
+            status: MediaStatus.COMPLETED,
+            current_units: mediaItem.totalUnits,
+            percentage_complete: 100,
+            date_started: '2000-01-01' // default date in the past
+        };
+
+        // Insert new record
+        const { data, error } = await supabase
+            .from('lu_media_status')
+            .insert([statusData])
+            .select()
+            .single();
+
+        if (error) {
+            console.error('Error inserting media status:', error);
+            alert('Error tracking media: ' + error.message);
+            return;
+        }
+        
+        // Update search results to show it's now tracked
+        const searchInput = domCache.searchInput || document.getElementById('search-input');
+        if (searchInput && searchInput.value.trim() !== '') {
+            openSearchModal(); // Refresh search results
+        } else {
+            closeSearchModal();
+        }
+    } catch (err) {
+        console.error('Error in quickComplete:', err);
+        alert('Error during quick complete: ' + (err.message || err));
     }
 }
 
@@ -953,13 +997,16 @@ function initMediaTracker() {
         searchBtn.addEventListener('click', openSearchModal);
     }
 
+    // Initialize DOM cache
+    initDOMCache();
+
     // Search on Enter key and autocomplete
-    const searchInput = document.getElementById('search-input');
+    const searchInput = domCache.searchInput;
     if (searchInput) {
         // Handle Enter key to open search modal
         searchInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
-                const dropdown = document.getElementById('autocomplete-dropdown');
+                const dropdown = domCache.autocompleteDropdown;
                 if (dropdown) {
                     dropdown.classList.remove('active');
                 }
@@ -967,13 +1014,13 @@ function initMediaTracker() {
             }
         });
 
-        // Handle input for autocomplete
+        // Handle input for autocomplete (with debouncing)
         searchInput.addEventListener('input', handleAutocompleteInput);
 
         // Handle Escape key to close autocomplete
         searchInput.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
-                const dropdown = document.getElementById('autocomplete-dropdown');
+                const dropdown = domCache.autocompleteDropdown;
                 if (dropdown) {
                     dropdown.classList.remove('active');
                 }
@@ -990,8 +1037,7 @@ function initMediaTracker() {
 
     // Close autocomplete when clicking outside
     document.addEventListener('click', (e) => {
-        const searchInput = document.getElementById('search-input');
-        const dropdown = document.getElementById('autocomplete-dropdown');
+        const dropdown = domCache.autocompleteDropdown;
         const searchWrapper = document.querySelector('.search-input-wrapper');
         
         if (dropdown && searchWrapper && !searchWrapper.contains(e.target)) {
@@ -1053,7 +1099,7 @@ function initMediaTracker() {
     }
 
     // Close modal on overlay click
-    const modal = document.getElementById('update-modal');
+    const modal = domCache.updateModal || document.getElementById('update-modal');
     if (modal) {
         modal.addEventListener('click', (e) => {
             if (e.target === modal) {
@@ -1078,7 +1124,7 @@ function initMediaTracker() {
     }
 
     // Close search modal on overlay click
-    const searchModal = document.getElementById('search-modal');
+    const searchModal = domCache.searchModal || document.getElementById('search-modal');
     if (searchModal) {
         searchModal.addEventListener('click', (e) => {
             if (e.target === searchModal) {
