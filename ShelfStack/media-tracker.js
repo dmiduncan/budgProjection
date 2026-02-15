@@ -693,7 +693,7 @@ function displaySearchResults(results, searchTerm) {
                     <div class="media-info-row">
                         <div class="media-detail"><strong>${capitalizedLabel}:</strong> ${media.totalUnits}</div>
                     </div>
-                    <div class="media-info-row">
+                    <div class="media-info-row" style="gap: 0.5em;">
                         ${isTracked ? `<span class="search-tracked-icon" title="Already Tracked - This media is being tracked">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                                 <polyline points="20 6 9 17 4 12"/>
@@ -708,15 +708,32 @@ function displaySearchResults(results, searchTerm) {
                                 <line x1="5" y1="12" x2="19" y2="12"/>
                             </svg>
                         </button>` : ''}
-                    </div>
-                    <div class="media-info-row">
+                        ${media.previouslyCompleted ? `<span class="search-tracked-icon" title="Previously Completed - You have finished this before">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9bf1ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <!-- Checkmark -->
+                                <polyline points="5 8 9 12 17 4" stroke-width="2.4"/>
+                                <!-- Left page of open book lying flat -->
+                                <path d="M12 22 C10 21 5 20 2 20 L3 16 C6 16 10 17 12 19Z"/>
+                                <!-- Right page -->
+                                <path d="M12 22 C14 21 19 20 22 20 L21 16 C18 16 14 17 12 19Z"/>
+                                <!-- Spine hint -->
+                                <line x1="12" y1="19" x2="12" y2="22"/>
+                            </svg>
+                        </span>` : ''}
                         ${!canQuickComplete ? `<button type="button" 
                                 class="button search-mark-done-btn"
                                 onclick="quickComplete(${media.id})"
                                 title="Mark Done - Quick complete without tracking progress">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
-                                <line x1="4" y1="22" x2="4" y2="15"/>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <!-- Question mark -->
+                                <path d="M9 5 C9 3 10 2 12 2 C14 2 15 3 15 5 C15 7 13 7.5 12 9"/>
+                                <circle cx="12" cy="11.5" r="0.8" fill="currentColor"/>
+                                <!-- Left page of open book lying flat -->
+                                <path d="M12 22 C10 21 5 20 2 20 L3 16 C6 16 10 17 12 19Z"/>
+                                <!-- Right page -->
+                                <path d="M12 22 C14 21 19 20 22 20 L21 16 C18 16 14 17 12 19Z"/>
+                                <!-- Spine -->
+                                <line x1="12" y1="19" x2="12" y2="22"/>
                             </svg>
                         </button>` : ''}
                     </div>
