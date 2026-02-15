@@ -253,11 +253,17 @@
             gap: 1em;
             flex-wrap: wrap;
             margin-top: 0em;
+            justify-content: center;
         }
 
         .modal-buttons .button {
             flex: 1;
             min-width: 120px;
+        }
+
+        .modal-buttons .modal-icon-btn {
+            flex: 0 0 auto;
+            min-width: auto;
         }
 
         /* Search Results Modal */
@@ -620,6 +626,49 @@
         .autocomplete-track-btn svg {
             display: block;
         }
+
+        /* Search Results Icon Buttons */
+        .search-track-btn,
+        .search-mark-done-btn {
+            padding: 0.5em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 32px;
+            height: 32px;
+        }
+
+        .search-track-btn svg,
+        .search-mark-done-btn svg {
+            display: block;
+        }
+
+        .search-tracked-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #9bf1ff;
+            width: 32px;
+            height: 32px;
+        }
+
+        .search-tracked-icon svg {
+            display: block;
+        }
+
+        /* Modal Icon Buttons */
+        .modal-icon-btn {
+            padding: 0.6em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 40px;
+            height: 40px;
+        }
+
+        .modal-icon-btn svg {
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -682,9 +731,26 @@
                 <input type="number" id="modal-update-input" style="color: grey" min="0" value="" placeholder="Enter new value">
             </div>
             <div class="modal-buttons">
-                <button type="button" class="button" id="modal-save-btn">Update</button>
-                <button type="button" class="button" id="modal-finish-btn">Finish</button>
-                <button type="button" class="button" id="modal-dnf-btn">DNF</button>
+                <button type="button" class="button modal-icon-btn" id="modal-save-btn" title="Update - Save your progress">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                        <polyline points="17 21 17 13 7 13 7 21"/>
+                        <polyline points="7 3 7 8 15 8"/>
+                    </svg>
+                </button>
+                <button type="button" class="button modal-icon-btn" id="modal-finish-btn" title="Finish - Mark as completed">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/>
+                        <polyline points="9 12 11 14 15 10"/>
+                    </svg>
+                </button>
+                <button type="button" class="button modal-icon-btn" id="modal-dnf-btn" title="DNF - Mark as did not finish">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="8" y1="8" x2="16" y2="16"/>
+                        <line x1="16" y1="8" x2="8" y2="16"/>
+                    </svg>
+                </button>
             </div>
         </div>
     </div>

@@ -694,23 +694,31 @@ function displaySearchResults(results, searchTerm) {
                         <div class="media-detail"><strong>${capitalizedLabel}:</strong> ${media.totalUnits}</div>
                     </div>
                     <div class="media-info-row">
-                        ${isTracked ? '<span style="color: #9bf1ff;">(Already Tracked)</span>' : ''}
+                        ${isTracked ? `<span class="search-tracked-icon" title="Already Tracked - This media is being tracked">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </span>` : ''}
+                        ${!isTracked ? `<button type="button" 
+                                class="button search-track-btn" 
+                                onclick="trackMedia(${media.id})"
+                                title="Track - Start tracking this media">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="12" y1="5" x2="12" y2="19"/>
+                                <line x1="5" y1="12" x2="19" y2="12"/>
+                            </svg>
+                        </button>` : ''}
                     </div>
                     <div class="media-info-row">
-                        <button type="button" 
-                                class="button" 
-                                ${isTracked ? 'disabled style="opacity: 0.5;"' : ''}
-                                onclick="trackMedia(${media.id})">
-                            ${isTracked ? 'Tracked' : 'Track'}
-                        </button>
-                    </div>
-                    <div class="media-info-row">
-                        <button type="button" 
-                                class="button"
-                                ${canQuickComplete ? 'style="display: none;"' : ''}
-                                onclick="quickComplete(${media.id})">
-                            Mark Done
-                        </button>
+                        ${!canQuickComplete ? `<button type="button" 
+                                class="button search-mark-done-btn"
+                                onclick="quickComplete(${media.id})"
+                                title="Mark Done - Quick complete without tracking progress">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
+                                <line x1="4" y1="22" x2="4" y2="15"/>
+                            </svg>
+                        </button>` : ''}
                     </div>
                 </div>
             `;
@@ -788,7 +796,7 @@ function displayAutocompleteSuggestions(suggestions) {
                 </div>
             </div>
             <div class="autocomplete-item-track">
-                ${isTracked ? `<span class="autocomplete-tracked-icon" title="Already Tracked">
+                ${isTracked ? `<span class="autocomplete-tracked-icon" title="Already Tracked - This media is being tracked">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="20 6 9 17 4 12"/>
                     </svg>
@@ -796,7 +804,7 @@ function displayAutocompleteSuggestions(suggestions) {
                 ${!isTracked ? `<button type="button" 
                         class="button autocomplete-track-btn" 
                         data-media-id="${item.id}"
-                        title="Track">
+                        title="Track - Start tracking this media">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         <line x1="12" y1="5" x2="12" y2="19"/>
                         <line x1="5" y1="12" x2="19" y2="12"/>
