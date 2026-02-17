@@ -55,6 +55,7 @@ let currentMediaData = []; // Will be loaded from lu_media_status
 let currentModalMediaId = null;
 let currentSearchResults = []; // Store current search results for tracking
 let trackedMediaIds = new Set(); // Track which media_ids are already tracked as "in progress"
+let completedMediaIds = new Set(); // Track which media_ids have been previously completed
 let allMediaItems = []; // Global list of all media for autocomplete
 let cachedUserId = null; // Cache user ID to avoid repeated API calls
 
@@ -140,7 +141,7 @@ function hideAllStreaks() {
     });
 }
 
-// Load all media items for autocomplete
+// Load all media items for autocomplete, and all completed media IDs for the current user
 async function loadAllMediaItems() {
     try {
         const userId = await getCurrentUserId();
@@ -148,27 +149,43 @@ async function loadAllMediaItems() {
             return; // User not authenticated yet
         }
 
-        // Fetch all media from lu_media table
-        const { data, error } = await supabase
-            .from('lu_media')
-            .select('*');
+        // Fetch all media and all completed status records in parallel
+        const [mediaResult, completedResult] = await Promise.all([
+            supabase.from('lu_media').select('*'),
+            supabase
+                .from('lu_media_status')
+                .select('media_id')
+                .eq('user_id', userId)
+                .eq('status', MediaStatus.COMPLETED)
+        ]);
 
-        if (error) {
-            console.error('Error loading all media items:', error);
+        if (mediaResult.error) {
+            console.error('Error loading all media items:', mediaResult.error);
             return;
         }
 
+        if (completedResult.error) {
+            console.error('Error loading completed media IDs:', completedResult.error);
+            // Non-fatal — continue without completed status info
+        }
+
+        // Populate module-level completedMediaIds Set
+        completedMediaIds = new Set(
+            (completedResult.data || []).map(item => item.media_id)
+        );
+
         // Map database columns to app structure
-        allMediaItems = (data || []).map(dbItem => ({
+        allMediaItems = (mediaResult.data || []).map(dbItem => ({
             id: dbItem.id,
             title: dbItem.text || dbItem.title || dbItem.name || '',
             writer: dbItem.writer || '',
             mediaType: dbItem.media_type || dbItem.mediaType || '',
             totalUnits: dbItem.num_units || dbItem.numUnits || 1,
-            imageUrl: dbItem.cover_art_url || dbItem.coverArtUrl || null
+            imageUrl: dbItem.cover_art_url || dbItem.coverArtUrl || null,
+            previouslyCompleted: completedMediaIds.has(dbItem.id)
         }));
 
-        console.log(`Loaded ${allMediaItems.length} media items for autocomplete`);
+        console.log(`Loaded ${allMediaItems.length} media items, ${completedMediaIds.size} previously completed`);
     } catch (err) {
         console.error('Error in loadAllMediaItems:', err);
     }
@@ -466,6 +483,14 @@ async function updateMediaItem(newValue, action = 'save') {
             }
         }
 
+        // If finishing, update completedMediaIds and allMediaItems so autocomplete
+        // reflects the new completed state without needing a full reload
+        if (action === 'finish' || (action === 'save' && shouldFinish)) {
+            completedMediaIds.add(mediaItem.id);
+            const allItem = allMediaItems.find(m => m.id === mediaItem.id);
+            if (allItem) allItem.previouslyCompleted = true;
+        }
+
         // If status changed to completed or abandoned, reload to remove from in-progress list
         // Otherwise, just refresh the display
         await loadTrackedMedia(true); // Force reload to get updated data
@@ -491,7 +516,7 @@ async function openConfirmationModal(action) {
     modal.classList.add('active');
 }
 
-// Close search modal
+// Close confirmation modal
 function closeConfirmationModal() {
     const modal = document.getElementById('confirmation-modal');
     if (modal) {
@@ -525,7 +550,7 @@ async function openSearchModal() {
             return;
         }
 
-        // Ensure allMediaItems is loaded
+        // Ensure allMediaItems is loaded (completedMediaIds is populated alongside it)
         if (allMediaItems.length === 0) {
             await loadAllMediaItems();
         }
@@ -540,7 +565,6 @@ async function openSearchModal() {
         const searchLower = searchTerm.toLowerCase().trim();
         
         const filteredData = allMediaItems.filter(item => {
-            // Use includes() directly on lowercase strings for better performance
             const title = item.title || '';
             const writer = item.writer || '';
             const mediaType = item.mediaType || '';
@@ -555,26 +579,8 @@ async function openSearchModal() {
             return;
         }
 
-        // Get completed status records for the current user
-        const mediaIds = filteredData.map(item => item.id);
-        const { data: completedStatusData, error: completedError } = await supabase
-            .from('lu_media_status')
-            .select('media_id')
-            .eq('user_id', userId)
-            .eq('status', MediaStatus.COMPLETED)
-            .in('media_id', mediaIds);
-
-        if (completedError) {
-            console.error('Error fetching completed status:', completedError);
-            // Continue without completed status info rather than failing
-        }
-
-        // Create a Set of completed media IDs for fast lookup
-        const completedMediaIds = new Set(
-            (completedStatusData || []).map(item => item.media_id)
-        );
-
-        // Map to search results structure (already in correct format from allMediaItems)
+        // Map to search results structure — previouslyCompleted derived live from
+        // the module-level completedMediaIds Set so it's always current
         const searchResults = filteredData.map(item => ({
             id: item.id,
             title: item.title,
@@ -582,7 +588,7 @@ async function openSearchModal() {
             mediaType: item.mediaType,
             totalUnits: item.totalUnits,
             imageUrl: item.imageUrl,
-            format: null, // Not stored in allMediaItems, but not critical
+            format: null,
             previouslyCompleted: completedMediaIds.has(item.id)
         }));
 
@@ -595,16 +601,6 @@ async function openSearchModal() {
 
         // Store search results for tracking
         currentSearchResults = searchResults;
-        
-        // Update trackedMediaIds set for search results
-        const trackedIds = new Set();
-        if (trackedMediaIds.size > 0) {
-            searchResults.forEach(item => {
-                if (trackedMediaIds.has(item.id)) {
-                    trackedIds.add(item.id);
-                }
-            });
-        }
 
         // Display results in modal
         displaySearchResults(searchResults, searchTerm);
@@ -639,6 +635,32 @@ function getSeriesLabel(mediaType) {
     return typeMap[normalizedType] || 'units';
 }
 
+// SVG icons
+const ICON_PREVIOUSLY_COMPLETED = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9bf1ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="5 8 9 12 17 4" stroke-width="2.4"/>
+        <path d="M12 22 C10 21 5 20 2 20 L3 16 C6 16 10 17 12 19Z"/>
+        <path d="M12 22 C14 21 19 20 22 20 L21 16 C18 16 14 17 12 19Z"/>
+        <line x1="12" y1="19" x2="12" y2="22"/>
+    </svg>`;
+
+const ICON_PREVIOUSLY_COMPLETED_SM = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9bf1ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="5 8 9 12 17 4" stroke-width="2.4"/>
+        <path d="M12 22 C10 21 5 20 2 20 L3 16 C6 16 10 17 12 19Z"/>
+        <path d="M12 22 C14 21 19 20 22 20 L21 16 C18 16 14 17 12 19Z"/>
+        <line x1="12" y1="19" x2="12" y2="22"/>
+    </svg>`;
+
+const ICON_QUICK_COMPLETE = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 5 C9 3 10 2 12 2 C14 2 15 3 15 5 C15 7 13 7.5 12 9"/>
+        <circle cx="12" cy="11.5" r="0.8" fill="currentColor"/>
+        <path d="M12 22 C10 21 5 20 2 20 L3 16 C6 16 10 17 12 19Z"/>
+        <path d="M12 22 C14 21 19 20 22 20 L21 16 C18 16 14 17 12 19Z"/>
+        <line x1="12" y1="19" x2="12" y2="22"/>
+    </svg>`;
+
 // Display search results in modal
 function displaySearchResults(results, searchTerm) {
     const modal = document.getElementById('search-modal');
@@ -666,19 +688,13 @@ function displaySearchResults(results, searchTerm) {
             const imageUrl = getMediaImageUrl(media);
             const hasImage = imageUrl && imageUrl.trim() !== '';
 
-            // Create image or placeholder
-            let imageHtml = '';
-            if (hasImage) {
-                imageHtml = `<img src="${imageUrl}" alt="${media.title}" class="media-image" onerror="this.parentElement.innerHTML='<div class=\\'media-image-placeholder\\'>${media.title}</div>';">`;
-            } else {
-                imageHtml = `<div class="media-image-placeholder">${media.title}</div>`;
-            }
+            let imageHtml = hasImage
+                ? `<img src="${imageUrl}" alt="${media.title}" class="media-image" onerror="this.parentElement.innerHTML='<div class=\\'media-image-placeholder\\'>${media.title}</div>';">`
+                : `<div class="media-image-placeholder">${media.title}</div>`;
                 
             resultItem.innerHTML = `
                 <div class="media-top-section">
-                    <div class="media-image-row">
-                        ${imageHtml}
-                    </div>
+                    <div class="media-image-row">${imageHtml}</div>
                 </div>
                 <div class="media-info">
                     <div class="media-info-row">
@@ -694,48 +710,31 @@ function displaySearchResults(results, searchTerm) {
                         <div class="media-detail"><strong>${capitalizedLabel}:</strong> ${media.totalUnits}</div>
                     </div>
                     <div class="media-info-row" style="gap: 0.5em;">
-                        ${isTracked ? `<span class="search-tracked-icon" title="Already Tracked - This media is being tracked">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                <polyline points="20 6 9 17 4 12"/>
-                            </svg>
-                        </span>` : ''}
-                        ${!isTracked ? `<button type="button" 
-                                class="button search-track-btn" 
-                                onclick="trackMedia(${media.id})"
-                                title="Track - Start tracking this media">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                <line x1="12" y1="5" x2="12" y2="19"/>
-                                <line x1="5" y1="12" x2="19" y2="12"/>
-                            </svg>
-                        </button>` : ''}
-                        ${media.previouslyCompleted ? `<span class="search-tracked-icon" title="Previously Completed - You have finished this before">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9bf1ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <!-- Checkmark -->
-                                <polyline points="5 8 9 12 17 4" stroke-width="2.4"/>
-                                <!-- Left page of open book lying flat -->
-                                <path d="M12 22 C10 21 5 20 2 20 L3 16 C6 16 10 17 12 19Z"/>
-                                <!-- Right page -->
-                                <path d="M12 22 C14 21 19 20 22 20 L21 16 C18 16 14 17 12 19Z"/>
-                                <!-- Spine hint -->
-                                <line x1="12" y1="19" x2="12" y2="22"/>
-                            </svg>
-                        </span>` : ''}
-                        ${!canQuickComplete ? `<button type="button" 
-                                class="button search-mark-done-btn"
-                                onclick="quickComplete(${media.id})"
-                                title="Mark Done - Quick complete without tracking progress">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <!-- Question mark -->
-                                <path d="M9 5 C9 3 10 2 12 2 C14 2 15 3 15 5 C15 7 13 7.5 12 9"/>
-                                <circle cx="12" cy="11.5" r="0.8" fill="currentColor"/>
-                                <!-- Left page of open book lying flat -->
-                                <path d="M12 22 C10 21 5 20 2 20 L3 16 C6 16 10 17 12 19Z"/>
-                                <!-- Right page -->
-                                <path d="M12 22 C14 21 19 20 22 20 L21 16 C18 16 14 17 12 19Z"/>
-                                <!-- Spine -->
-                                <line x1="12" y1="19" x2="12" y2="22"/>
-                            </svg>
-                        </button>` : ''}
+                        ${isTracked
+                            ? `<span class="search-tracked-icon" title="Already Tracked - This media is being tracked">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="20 6 9 17 4 12"/>
+                                </svg>
+                               </span>`
+                            : `<button type="button" class="button search-track-btn" onclick="trackMedia(${media.id})" title="Track - Start tracking this media">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="12" y1="5" x2="12" y2="19"/>
+                                    <line x1="5" y1="12" x2="19" y2="12"/>
+                                </svg>
+                               </button>`
+                        }
+                        ${media.previouslyCompleted
+                            ? `<span class="search-tracked-icon" title="Previously Completed - You have finished this before">
+                                ${ICON_PREVIOUSLY_COMPLETED}
+                               </span>`
+                            : ''
+                        }
+                        ${!canQuickComplete
+                            ? `<button type="button" class="button search-mark-done-btn" onclick="quickComplete(${media.id})" title="Mark Done - Quick complete without tracking progress">
+                                ${ICON_QUICK_COMPLETE}
+                               </button>`
+                            : ''
+                        }
                     </div>
                 </div>
             `;
@@ -762,28 +761,30 @@ function filterMediaForAutocomplete(searchTerm) {
     }
 
     const searchLower = searchTerm.toLowerCase().trim();
-    const maxResults = 10; // Limit to 10 suggestions
+    const maxResults = 10;
 
-    const filtered = allMediaItems
-        .filter(item => {
-            // Optimize: only call toLowerCase() when needed, not on every field
-            const title = item.title || '';
-            const writer = item.writer || '';
-            const mediaType = item.mediaType || '';
-            
-            return title.toLowerCase().includes(searchLower) ||
-                   writer.toLowerCase().includes(searchLower) ||
-                   mediaType.toLowerCase().includes(searchLower);
-        });
+    const filtered = allMediaItems.filter(item => {
+        const title = item.title || '';
+        const writer = item.writer || '';
+        const mediaType = item.mediaType || '';
+        
+        return title.toLowerCase().includes(searchLower) ||
+               writer.toLowerCase().includes(searchLower) ||
+               mediaType.toLowerCase().includes(searchLower);
+    });
 
-    // Sort results by title ascending (case-insensitive, with numeric sorting)
     filtered.sort((a, b) => {
         const titleA = (a.title || '').toLowerCase();
         const titleB = (b.title || '').toLowerCase();
         return titleA.localeCompare(titleB, undefined, { numeric: true, sensitivity: 'base' });
     });
 
-    return filtered.slice(0, maxResults);
+    // Derive previouslyCompleted live from the module-level Set so autocomplete
+    // always reflects the latest state (quick completes, finishes, etc.)
+    return filtered.slice(0, maxResults).map(item => ({
+        ...item,
+        previouslyCompleted: completedMediaIds.has(item.id)
+    }));
 }
 
 // Display autocomplete suggestions
@@ -812,21 +813,26 @@ function displayAutocompleteSuggestions(suggestions) {
                     <strong>Type:</strong> ${item.mediaType}
                 </div>
             </div>
-            <div class="autocomplete-item-track">
-                ${isTracked ? `<span class="autocomplete-tracked-icon" title="Already Tracked - This media is being tracked">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="20 6 9 17 4 12"/>
-                    </svg>
-                </span>` : ''}
-                ${!isTracked ? `<button type="button" 
-                        class="button autocomplete-track-btn" 
-                        data-media-id="${item.id}"
-                        title="Track - Start tracking this media">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="12" y1="5" x2="12" y2="19"/>
-                        <line x1="5" y1="12" x2="19" y2="12"/>
-                    </svg>
-                </button>` : ''}
+            <div class="autocomplete-item-track" style="display:flex; align-items:center; gap:0.25em;">
+                ${item.previouslyCompleted
+                    ? `<span class="autocomplete-tracked-icon" title="Previously Completed - You have finished this before">
+                        ${ICON_PREVIOUSLY_COMPLETED_SM}
+                       </span>`
+                    : ''
+                }
+                ${isTracked
+                    ? `<span class="autocomplete-tracked-icon" title="Already Tracked - This media is being tracked">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                       </span>`
+                    : `<button type="button" class="button autocomplete-track-btn" data-media-id="${item.id}" title="Track - Start tracking this media">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="12" y1="5" x2="12" y2="19"/>
+                            <line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                       </button>`
+                }
             </div>
         `;
 
@@ -841,7 +847,6 @@ function displayAutocompleteSuggestions(suggestions) {
 
         // Handle click on suggestion (but not on the track button)
         suggestionItem.addEventListener('click', (e) => {
-            // Don't open modal if clicking on the track button
             if (e.target.closest('.autocomplete-track-btn')) {
                 return;
             }
@@ -849,7 +854,6 @@ function displayAutocompleteSuggestions(suggestions) {
             if (searchInput) {
                 searchInput.value = item.title;
                 dropdown.classList.remove('active');
-                // Trigger search
                 openSearchModal();
             }
         });
@@ -857,26 +861,23 @@ function displayAutocompleteSuggestions(suggestions) {
         dropdown.appendChild(suggestionItem);
     });
 
-    // Reset scroll to top when dropdown becomes active
     dropdown.scrollTop = 0;
     dropdown.classList.add('active');
 }
 
 // Debounce function for autocomplete
 let autocompleteDebounceTimer = null;
-const AUTOCOMPLETE_DEBOUNCE_MS = 150; // Delay before showing autocomplete
+const AUTOCOMPLETE_DEBOUNCE_MS = 150;
 
 // Handle autocomplete input with debouncing
 function handleAutocompleteInput() {
     const searchInput = domCache.searchInput || document.getElementById('search-input');
     if (!searchInput) return;
 
-    // Clear existing timer
     if (autocompleteDebounceTimer) {
         clearTimeout(autocompleteDebounceTimer);
     }
 
-    // Set new timer
     autocompleteDebounceTimer = setTimeout(() => {
         const searchTerm = searchInput.value.trim();
         
@@ -893,10 +894,8 @@ function handleAutocompleteInput() {
     }, AUTOCOMPLETE_DEBOUNCE_MS);
 }
 
-
 // Track a media item (insert/update lu_media_status)
 async function trackMedia(mediaId) {
-    // Find the media item in current search results or allMediaItems
     let mediaItem = currentSearchResults.find(m => m.id === mediaId);
     if (!mediaItem) {
         mediaItem = allMediaItems.find(m => m.id === mediaId);
@@ -906,21 +905,18 @@ async function trackMedia(mediaId) {
         return;
     }
 
-    // Check if already tracked as "in progress"
     if (trackedMediaIds.has(mediaId)) {
         alert('This media is already being tracked as in progress.');
         return;
     }
 
     try {
-        // Get current user ID
         const userId = await getCurrentUserId();
         if (!userId) {
             alert('You must be logged in to track media.');
             return;
         }
 
-        // Check if an in progress status record exists for this media_id and user
         const { data: existingStatus, error: checkError } = await supabase
             .from('lu_media_status')
             .select('*')
@@ -935,12 +931,11 @@ async function trackMedia(mediaId) {
             status: MediaStatus.IN_PROGRESS,
             current_units: 0,
             percentage_complete: 0,
-            date_started: new Date().toISOString().split('T')[0] // Today's date in YYYY-MM-DD format
+            date_started: new Date().toISOString().split('T')[0]
         };
 
         let result;
         if (existingStatus && !checkError) {
-            // Update existing record
             const { data, error } = await supabase
                 .from('lu_media_status')
                 .update(statusData)
@@ -955,7 +950,6 @@ async function trackMedia(mediaId) {
             }
             result = data;
         } else {
-            // Insert new record
             const { data, error } = await supabase
                 .from('lu_media_status')
                 .insert([statusData])
@@ -970,24 +964,18 @@ async function trackMedia(mediaId) {
             result = data;
         }
 
-        // Add to tracked set
         trackedMediaIds.add(mediaId);
         hasLoadedTrackedMedia = false;
-        // Reload tracked media to refresh the display
         await loadTrackedMedia();
 
-        // Update search results or autocomplete dropdown to show it's now tracked
         const searchInput = domCache.searchInput || document.getElementById('search-input');
         const dropdown = domCache.autocompleteDropdown || document.getElementById('autocomplete-dropdown');
         
         if (searchInput && searchInput.value.trim() !== '') {
-            // Check if autocomplete dropdown is open
             if (dropdown && dropdown.classList.contains('active')) {
-                // Refresh autocomplete dropdown
                 const suggestions = filterMediaForAutocomplete(searchInput.value.trim());
                 displayAutocompleteSuggestions(suggestions);
             } else {
-                // Refresh search results modal
                 openSearchModal();
             }
         } else {
@@ -1001,7 +989,6 @@ async function trackMedia(mediaId) {
 
 // Add lu_media_status entry without adding journal entries
 async function quickComplete(mediaId) {
-    // Find the media item in current search results
     const mediaItem = currentSearchResults.find(m => m.id === mediaId);
     if (!mediaItem) {
         alert('Media item not found. Please search again.');
@@ -1009,7 +996,6 @@ async function quickComplete(mediaId) {
     }
 
     try {
-        // Get current user ID
         const userId = await getCurrentUserId();
         if (!userId) {
             alert('You must be logged in to track media.');
@@ -1022,10 +1008,9 @@ async function quickComplete(mediaId) {
             status: MediaStatus.COMPLETED,
             current_units: mediaItem.totalUnits,
             percentage_complete: 100,
-            date_started: '2000-01-01' // default date in the past
+            date_started: '2000-01-01'
         };
 
-        // Insert new record
         const { data, error } = await supabase
             .from('lu_media_status')
             .insert([statusData])
@@ -1037,11 +1022,15 @@ async function quickComplete(mediaId) {
             alert('Error tracking media: ' + error.message);
             return;
         }
-        
-        // Update search results to show it's now tracked
+
+        // Update module-level state so autocomplete and search reflect the change immediately
+        completedMediaIds.add(mediaId);
+        const allItem = allMediaItems.find(m => m.id === mediaId);
+        if (allItem) allItem.previouslyCompleted = true;
+
         const searchInput = domCache.searchInput || document.getElementById('search-input');
         if (searchInput && searchInput.value.trim() !== '') {
-            openSearchModal(); // Refresh search results
+            openSearchModal();
         } else {
             closeSearchModal();
         }
@@ -1073,7 +1062,6 @@ function initMediaTracker() {
     // Search on Enter key and autocomplete
     const searchInput = domCache.searchInput;
     if (searchInput) {
-        // Handle Enter key to open search modal
         searchInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 const dropdown = domCache.autocompleteDropdown;
@@ -1084,10 +1072,8 @@ function initMediaTracker() {
             }
         });
 
-        // Handle input for autocomplete (with debouncing)
         searchInput.addEventListener('input', handleAutocompleteInput);
 
-        // Handle Escape key to close autocomplete
         searchInput.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 const dropdown = domCache.autocompleteDropdown;
@@ -1097,7 +1083,6 @@ function initMediaTracker() {
             }
         });
 
-        // Handle focus to show autocomplete if there's text
         searchInput.addEventListener('focus', () => {
             if (searchInput.value.trim().length > 0) {
                 handleAutocompleteInput();
@@ -1127,7 +1112,7 @@ function initMediaTracker() {
     if (modalConfirmationNo) {
         modalConfirmationNo.addEventListener('click', () => {
             closeConfirmationModal();
-        })
+        });
     }
 
     if (modalConfirmationYes) {
@@ -1202,9 +1187,6 @@ function initMediaTracker() {
             }
         });
     }
-
-    // Don't load tracked media here - wait for auth.js to call it after authentication
-    // This prevents loading data before user is authenticated
 }
 
 // Make functions available globally for onclick handlers
@@ -1214,18 +1196,12 @@ window.quickComplete = quickComplete;
 window.loadStreaks = loadStreaks;
 window.loadTrackedMedia = loadTrackedMedia; // Export for auth.js to call
 
-// Initialize when DOM is ready, but only if app-container is visible (user is authenticated)
-// Otherwise, wait for auth.js to call loadTrackedMedia after authentication
 function checkAndInit() {
     const appContainer = document.getElementById('app-container');
     if (appContainer && appContainer.style.display !== 'none') {
-        // User is authenticated, initialize
         initMediaTracker();
     } else {
-        // Not authenticated yet, just set up the init function but don't load data
-        // Auth.js will call loadTrackedMedia after login
         initMediaTracker();
-        // Don't call loadTrackedMedia here - wait for auth
     }
 }
 
