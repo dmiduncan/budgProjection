@@ -804,8 +804,16 @@ function displayAutocompleteSuggestions(suggestions) {
         const suggestionItem = document.createElement('div');
         suggestionItem.className = 'autocomplete-item';
         suggestionItem.dataset.mediaId = item.id;
+
+        // Build thumbnail HTML
+        const itemImageUrl = getMediaImageUrl(item);
+        const itemHasImage = itemImageUrl && itemImageUrl.trim() !== '';
+        const thumbnailHtml = itemHasImage
+            ? `<img src="${itemImageUrl}" alt="${item.title}" class="autocomplete-item-thumbnail" onerror="this.style.display='none'">`
+            : `<div class="autocomplete-item-thumbnail autocomplete-item-thumbnail--placeholder">${item.title.charAt(0)}</div>`;
         
         suggestionItem.innerHTML = `
+            ${thumbnailHtml}
             <div class="autocomplete-item-content">
                 <div class="autocomplete-item-title">${item.title}</div>
                 <div class="autocomplete-item-details">
