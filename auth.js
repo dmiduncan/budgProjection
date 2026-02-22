@@ -24,7 +24,39 @@ authContainer.innerHTML = `\
       <line x1="21" y1="12" x2="9" y2="12"/>
     </svg>
   </button>
-  <button id="shelf-stack-btn" style="display:none;" onclick="window.location.href='./ShelfStack'">shelfSTACK</button>
+  <button id="shelf-stack-btn" style="display:none; vertical-align: bottom;" onclick="window.location.href='./ShelfStack'">
+    <svg xmlns="http://www.w3.org/2000/svg" width="36" height="30" viewBox="0 0 36 30"
+     fill="none" stroke="currentColor" stroke-width="1.4"
+     stroke-linecap="round" stroke-linejoin="round">
+
+      <!-- Shelf board -->
+      <rect x="0.7" y="24" width="34.6" height="2.5" rx="0.4" fill="currentColor" stroke="none" opacity="0.15"/>
+      <rect x="0.7" y="24" width="34.6" height="2.5" rx="0.4"/>
+
+      <!-- Book 1: tall, thin -->
+      <rect x="3" y="6" width="4" height="18" rx="0.3"/>
+      <line x1="5.5" y1="6" x2="5.5" y2="24"/>
+
+      <!-- Book 2: short, wide -->
+      <rect x="8" y="12" width="6" height="12" rx="0.3"/>
+      <line x1="10" y1="12" x2="10" y2="24"/>
+
+      <!-- Book 3: medium -->
+      <rect x="15" y="8" width="4.5" height="16" rx="0.3"/>
+      <line x1="17.2" y1="8" x2="17.2" y2="24"/>
+
+      <!-- Book 4: tallest -->
+      <rect x="20.5" y="4" width="5" height="20" rx="0.3"/>
+      <line x1="23" y1="4" x2="23" y2="24"/>
+
+      <!-- Book 5: leaning toward book 4 -->
+      <g transform="rotate(-12, 32, 24)">
+        <rect x="28" y="10" width="4" height="14" rx="0.3"/>
+        <line x1="30" y1="10" x2="30" y2="24"/>
+      </g>
+
+    </svg>
+  </button>
   <br><br>
 `
 document.body.prepend(authContainer)
