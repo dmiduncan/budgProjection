@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Budget Projection</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <style>
+        ul { list-style-type: none; }
+
+        button, .button {
+            box-shadow: none !important;
+            background-color: transparent !important;
+            transition: background-color 0.2s ease-in-out;
+        }
+        button:hover, .button:hover {
+            background-color: rgba(255, 255, 255, 0.05) !important;
+        }
+
+        #toolbar {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+            border-bottom: solid 1px rgba(212, 212, 255, 0.1);
+        }
+
+        .toolbar__inner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.6em 2em;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .toolbar__brand { display: flex; align-items: center; gap: 0.75em; }
+
+        .toolbar__logo {
+            font-size: 1em;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            background: linear-gradient(135deg, #9bf1ff, #c084fc);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .toolbar__nav { display: flex; align-items: center; gap: 0.25em; }
+
+        .toolbar__btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            padding: 0;
+            background: transparent !important;
+            border: none;
+            color: rgba(244, 244, 255, 0.6);
+            cursor: pointer;
+            transition: color 0.2s ease, background-color 0.2s ease;
+        }
+        .toolbar__btn:hover {
+            color: rgba(244, 244, 255, 1) !important;
+            background: rgba(255, 255, 255, 0.06) !important;
+        }
+        .toolbar__btn--hidden { display: none !important; }
+
+        #auth-container {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: calc(100vh - 56px);
+            padding: 2em;
+            gap: 1em;
+        }
+
+        .auth__title {
+            font-size: 1.5em;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            margin-bottom: 0.5em;
+            background: linear-gradient(135deg, #9bf1ff, #c084fc);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .auth__form {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75em;
+            width: 100%;
+            max-width: 320px;
+        }
+
+        .auth__actions { display: flex; gap: 0.75em; margin-top: 0.25em; }
+        .auth__actions .button { flex: 1; }
+
+        #auth-message {
+            font-size: 0.85em;
+            color: rgba(244, 244, 255, 0.6);
+            text-align: center;
+            min-height: 1.2em;
+        }
+
+        #toast-container {
+            position: fixed;
+            bottom: 1.5em;
+            right: 1.5em;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5em;
+            z-index: 9999;
+            pointer-events: none;
+        }
+
+        .toast {
+            display: flex;
+            align-items: center;
+            gap: 0.5em;
+            padding: 0.65em 1em;
+            background: #2a2f4a;
+            border: solid 1px rgba(212, 212, 255, 0.15);
+            font-size: 0.875em;
+            color: #ffffff;
+            opacity: 0;
+            transform: translateY(8px);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            pointer-events: auto;
+            max-width: 320px;
+        }
+        .toast--visible { opacity: 1; transform: translateY(0); }
+        .toast--success { border-left: 3px solid #4ade80; }
+        .toast--error   { border-left: 3px solid #f87171; }
+        .toast--info    { border-left: 3px solid #9bf1ff; }
+        .toast__icon    { font-size: 0.9em; flex-shrink: 0; }
+        .toast--success .toast__icon { color: #4ade80; }
+        .toast--error   .toast__icon { color: #f87171; }
+        .toast--info    .toast__icon { color: #9bf1ff; }
+
+        #app-container { display: none; padding: 1.5em 2em; }
+
+        @media (max-width: 600px) {
+            #app-container { padding: 1em; }
+            .toolbar__inner { padding: 0.6em 1em; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="toolbar"></div>
+
+    <div id="auth-container">
+        <div class="auth__title">Budget Projection</div>
+        <div class="auth__form">
+            <input type="email"    id="auth-email"    placeholder="Email"    autocomplete="email">
+            <input type="password" id="auth-password" placeholder="Password" autocomplete="current-password">
+            <div class="auth__actions">
+                <button type="button" class="button" id="auth-login-btn">Login</button>
+                <button type="button" class="button" id="auth-signup-btn">Sign Up</button>
+            </div>
+            <div id="auth-message"></div>
+        </div>
+    </div>
+
+    <div id="app-container">
+        <label>Starting Balance:</label>
+        <input type="number" id="balanceInput" name="balanceInput" style="text-align: right;" value="0">
+        <button id="recalcButton">Calculate</button>
+        <h3>Transactions</h3>
+        <div id="txBucket">
+            <ul id="txList"></ul>
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <script type="module">
+        import { initToolbar } from './js/toolbar.js';
+        import './js/auth.js';
+        import './js/app.js';
+        initToolbar();
+    </script>
+
+</body>
+</html>

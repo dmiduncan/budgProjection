@@ -1,5 +1,3 @@
-import { processExpenses } from './processExpenses.js';
-
 // main.js
 // Exported initApp(supabase) — call this after login from auth.js
 export async function initApp(supabase) {
