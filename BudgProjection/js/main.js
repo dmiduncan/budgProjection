@@ -63,15 +63,16 @@ function recalc(transactions) {
 
                 if (currTx.name === 'Monthly Low Balance') {
                     txList.insertAdjacentHTML('beforeend',
-                        `<li><h3>${date.toLocaleString('default', { month: 'long' })} ${currTx.name}: $${currentBalance.toFixed(2)}</h3></li><hr>`
+                        `<li class="tx-month-header">${date.toLocaleString('default', { month: 'long' })} Low Balance: $${currentBalance.toFixed(2)}</li>`
                     );
                 } else {
                     txList.insertAdjacentHTML('beforeend',
-                        `<li>${currTx.name}<ul>
-                            <li>${date.toLocaleDateString('en-US')}</li>
-                            <li>Tx Amount: ${currTx.amount}</li>
-                            <li>New Balance: ${currentBalance.toFixed(2)}</li>
-                        </ul></li><hr>`
+                        `<li class="tx-row">
+                            <span class="tx-name">${currTx.name}</span>
+                            <span class="tx-date">${date.toLocaleDateString('en-US')}</span>
+                            <span class="tx-amount">${currTx.amount >= 0 ? '+' : ''}${currTx.amount}</span>
+                            <span class="tx-balance">Balance: $${currentBalance.toFixed(2)}</span>
+                        </li>`
                     );
                 }
             }
