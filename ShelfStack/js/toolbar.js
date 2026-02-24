@@ -15,6 +15,12 @@ export function initToolbar() {
                 <span class="toolbar__logo">shelfSTACK</span>
             </div>
             <nav class="toolbar__nav" id="toolbar-nav">
+                <button type="button" class="toolbar__btn" title="Trends" onclick="window.location.href='../Trends/'">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="2,16 6,9 10,13 14,6 18,10 22,5"/>
+                    </svg>
+                </button>
                 <button type="button" class="toolbar__btn" id="toolbar-home-btn" title="Home" onclick="window.location.href='../BudgProjection/'">
                     <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none"
                          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

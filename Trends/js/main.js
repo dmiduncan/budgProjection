@@ -63,7 +63,7 @@ function recalc(transactions) {
 
                 if (currTx.name === 'Monthly Low Balance') {
                     txList.insertAdjacentHTML('beforeend',
-                        `<li class="tx-month-header">${date.toLocaleString('default', { month: 'long' })} Low Balance: <span class="${currentBalance < 0 ? 'tx-amount--negative' : 'tx-amount--positive'}"">$${currentBalance.toFixed(2)}</span></li>`
+                        `<li class="tx-month-header">${date.toLocaleString('default', { month: 'long' })} Low Balance: $${currentBalance.toFixed(2)}</li>`
                     );
                 } else {
                     txList.insertAdjacentHTML('beforeend',
@@ -71,7 +71,7 @@ function recalc(transactions) {
                             <span class="tx-name">${currTx.name}</span>
                             <span class="tx-date">${date.toLocaleDateString('en-US')}</span>
                             <span class="tx-amount">${currTx.amount >= 0 ? '+' : ''}${currTx.amount}</span>
-                            <span class="tx-balance">Balance: <span class="${currentBalance < 0 ? 'tx-amount--negative' : ''}">$${currentBalance.toFixed(2)}</span></span>
+                            <span class="tx-balance">Balance: $${currentBalance.toFixed(2)}</span>
                         </li>`
                     );
                 }
