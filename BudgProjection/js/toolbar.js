@@ -10,7 +10,7 @@ export function initToolbar() {
     toolbar.innerHTML = `
         <div class="toolbar__inner">
             <div class="toolbar__brand">
-                <span class="toolbar__logo">budgetPROJECTION</span>
+                <span class="toolbar__logo">budget<span>Projection</span></span>
             </div>
             <nav class="toolbar__nav">
                 <button type="button" class="toolbar__btn toolbar__btn--hidden" id="toolbar-shelfstack-btn"
@@ -24,6 +24,13 @@ export function initToolbar() {
                         <g transform="rotate(-15, 18.5, 15)">
                             <rect x="16" y="7" width="2.5" height="8" rx="0.3"/>
                         </g>
+                    </svg>
+                </button>
+                <button type="button" class="toolbar__btn" id="toolbar-home-btn" title="Home" onclick="window.location.href='../'">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z"/>
+                        <path d="M9 21V12h6v9"/>
                     </svg>
                 </button>
                 <button type="button" class="toolbar__btn toolbar__btn--hidden" id="toolbar-logout-btn"
