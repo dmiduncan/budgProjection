@@ -17,9 +17,10 @@ export async function fetchStreaks(userId) {
  * Trigger a streak update after a journal entry is recorded.
  */
 export async function updateStreakForMediaType(userId, mediaType) {
+    const normalisedMediaType = mediaType.toLowerCase() === 'tv show' ? 'tvshow' : mediaType.toLowerCase();
     const { data, error } = await supabase.rpc('update_user_streak_for_media_type', {
         p_user_id:   userId,
-        p_media_type: mediaType
+        p_media_type: normalisedMediaType
     });
     return { data, error };
 }
