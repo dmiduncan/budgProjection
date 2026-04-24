@@ -5,299 +5,485 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
     <title>Trends</title>
     <link rel="stylesheet" href="../../css/main.css">
-    <script type="module" src="https://cdn.jsdelivr.net/npm/@observablehq/plot@0.6/+esm"></script>
     <style>
         #app-container {
             display: block;
-            padding: 2em 15%;
+            padding: 2em 12%;
         }
-
         @media (max-width: 900px) {
             #app-container { padding: 1.5em 4%; }
         }
-
         .trends-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
             gap: 1.5em;
             margin-top: 1.5em;
         }
-
-        .chart-card {
+        .card {
             background: var(--surface);
             border: 1px solid var(--border);
             border-radius: var(--radius-lg);
-            padding: 1.5em;
+            padding: 1.25em;
             position: relative;
             overflow: hidden;
         }
-
-        .chart-card::before {
-            content: '';
+        .card::before {
+            content: "";
             position: absolute;
-            top: 0; left: 0; right: 0;
+            top: 0;
+            left: 0;
+            right: 0;
             height: 2px;
             background: var(--accent);
         }
-
-        .chart-card__label {
+        .card__label {
             font-family: var(--font-display);
-            font-size: 0.68em;
+            font-size: 0.7em;
             font-weight: 700;
             letter-spacing: 0.14em;
             text-transform: uppercase;
             color: var(--text-faint);
-            margin-bottom: 1.25em;
+            margin-bottom: 1.1em;
         }
-
-        .chart-card__plot {
-            width: 100%;
-            overflow-x: auto;
+        .streak-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 0.7em;
         }
-
-        /* Override Observable Plot defaults to match dark theme */
-        .chart-card__plot svg {
-            background: transparent !important;
+        .streak-pill {
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 0.6em 0.7em;
+            background: var(--surface-2);
+        }
+        .streak-pill__name { font-size: 0.78em; color: var(--text-muted); }
+        .streak-pill__count {
+            font-family: var(--font-display);
+            font-size: 1.05em;
+            color: var(--accent-text);
+            margin-top: 0.1em;
+        }
+        .streak-pill__date { font-size: 0.72em; color: var(--text-faint); margin-top: 0.25em; }
+        .streak-bar {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.15em;
+            margin-bottom: 0.75em;
+            overflow-x: hidden;
+        }
+        .streak-bar::-webkit-scrollbar { display: none; }
+        .streak-item {
+            display: flex;
+            align-items: center;
+            gap: 0.3em;
+            padding: 0.2em 0.5em;
+            cursor: default;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .streak-item + .streak-item { border-left: 1px solid var(--border); }
+        .streak-icon {
+            font-family: var(--font-display);
+            font-size: 0.6em;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            line-height: 1;
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .streak-item:has(#book-count)  .streak-icon { background-image: linear-gradient(135deg, #f5c842, #e8853d); }
+        .streak-item:has(#manga-count) .streak-icon { background-image: linear-gradient(135deg, #c8d8f0, #7aaee8); }
+        .streak-item:has(#anime-count) .streak-icon { background-image: linear-gradient(135deg, #f9a8d4, #c084fc); }
+        .streak-item:has(#tv-count)    .streak-icon { background-image: linear-gradient(135deg, #5eead4, #22d3ee); }
+        .streak-item:has(#movie-count) .streak-icon { background-image: linear-gradient(135deg, #e2e2e2, #a0a0a0); }
+        .streak-count {
+            font-size: 0.65em;
+            font-weight: 600;
+            color: var(--accent-text);
+        }
+        @media (max-width: 640px) {
+            .streak-item {
+                padding: 0.15em 0.4em;
+                gap: 0.22em;
+            }
+            .streak-icon { font-size: 0.56em; }
+            .streak-count { font-size: 0.6em; }
+        }
+        .year-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1em;
+        }
+        .year-section { min-width: 0; }
+        .year-section h4 {
+            margin: 0 0 0.6em;
+            font-size: 0.82em;
             color: var(--text-muted);
-            overflow: visible;
+            font-weight: 600;
         }
-
-        .chart-card__plot [aria-label="x-axis tick label"],
-        .chart-card__plot [aria-label="y-axis tick label"] {
-            fill: var(--text-faint) !important;
-            font-family: var(--font-body) !important;
-            font-size: 11px !important;
+        .year-table-wrap {
+            overflow: auto;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
         }
-
-        .chart-card__plot [aria-label="x-axis"],
-        .chart-card__plot [aria-label="y-axis"] {
-            stroke: var(--border) !important;
+        .year-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.78em;
         }
-
-        .chart-card__plot [aria-label="x-grid"],
-        .chart-card__plot [aria-label="y-grid"] {
-            stroke: rgba(255,255,255,0.04) !important;
+        .year-table th,
+        .year-table td {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 0.45em 0.6em;
+            text-align: right;
+            white-space: nowrap;
+        }
+        .year-table th:first-child,
+        .year-table td:first-child {
+            text-align: left;
+            position: sticky;
+            left: 0;
+            background: var(--surface-2);
+        }
+        .year-table thead th {
+            font-weight: 700;
+            color: var(--text-muted);
+            background: var(--surface-2);
+        }
+        .plot-wrap { width: 100%; overflow-x: auto; }
+        .plot-wrap svg { background: transparent !important; overflow: visible; }
+        .note { color: var(--text-faint); font-size: 0.8em; margin-top: 0.55em; }
+        .full-span { grid-column: 1 / -1; }
+        .status {
+            color: var(--text-muted);
+            font-size: 0.95em;
+            margin-top: 1em;
+        }
+        @media (max-width: 1120px) {
+            .year-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
-
-    <div id="toolbar">
-        <div class="toolbar__inner">
-            <div class="toolbar__brand">
-                <span class="toolbar__logo">shelf<span style="color:var(--accent)">STACK</span></span>
+<div id="toolbar"></div>
+<div id="app-container">
+    <div class="status" id="status-text">Loading trends...</div>
+    <div class="trends-grid" id="trends-grid" style="display:none;">
+        <div class="card">
+            <div class="card__label">Active Streaks</div>
+            <div class="streak-bar" id="streaks-container">
+                <div class="streak-item">
+                    <span class="streak-icon">Books</span>
+                    <span class="streak-count" id="book-count">0</span>
+                </div>
+                <div class="streak-item">
+                    <span class="streak-icon">Manga</span>
+                    <span class="streak-count" id="manga-count">0</span>
+                </div>
+                <div class="streak-item">
+                    <span class="streak-icon">Anime</span>
+                    <span class="streak-count" id="anime-count">0</span>
+                </div>
+                <div class="streak-item">
+                    <span class="streak-icon">TV Shows</span>
+                    <span class="streak-count" id="tv-count">0</span>
+                </div>
+                <div class="streak-item">
+                    <span class="streak-icon">Films</span>
+                    <span class="streak-count" id="movie-count">0</span>
+                </div>
             </div>
-            <nav class="toolbar__nav">
-                <button type="button" class="toolbar__btn" title="Home" onclick="window.location.href='../'">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="18" viewBox="0 0 20 18"
-                         fill="none" stroke="currentColor" stroke-width="1.5"
-                         stroke-linecap="round" stroke-linejoin="round">
-                        <rect x="2.5"  y="3" width="3"   height="12" rx="0.3"/>
-                        <rect x="7"    y="8" width="3"   height="7"  rx="0.3"/>
-                        <rect x="11.5" y="5" width="3"   height="10" rx="0.3"/>
-                        <g transform="rotate(-15, 18.5, 15)">
-                            <rect x="16" y="7" width="2.5" height="8" rx="0.3"/>
-                        </g>
-                    </svg>
-                </button>
-                <button type="button" class="toolbar__btn" title="Home" onclick="window.location.href='/'">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none"
-                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z"/>
-                        <path d="M9 21V12h6v9"/>
-                    </svg>
-                </button>
-            </nav>
+        </div>
+        <div class="card full-span">
+            <div class="card__label">Year At A Glance</div>
+            <div class="year-grid">
+                <div class="year-section">
+                    <h4>Media Completed</h4>
+                    <div id="year-total-completed"></div>
+                    <h4 style="margin-top:1em;">Average Units Per Day</h4>
+                    <div id="year-units-per-day"></div>
+                </div>
+                <div class="year-section">
+                    <h4>Units Per Month</h4>
+                    <div id="year-units-by-month"></div>
+                    <h4 style="margin-top:1em;">Media Completed Per Month</h4>
+                    <div id="year-completed-by-month"></div>
+                </div>
+            </div>
+        </div>
+        <div class="card full-span">
+            <div class="card__label">Units Per Month</div>
+            <div class="plot-wrap" id="chart-units"></div>
+        </div>
+        <div class="card full-span">
+            <div class="card__label">Media Completed Per Month</div>
+            <div class="plot-wrap" id="chart-completed"></div>
         </div>
     </div>
+</div>
+<script type="module">
+    import * as Plot from "https://cdn.jsdelivr.net/npm/@observablehq/plot@0.6/+esm";
+    import { initToolbar } from "../js/toolbar.js";
+    import { supabase } from "../js/supabase-client.js";
 
-    <div id="app-container">
+    initToolbar();
 
-        <div class="trends-grid">
+    const year = new Date().getFullYear();
+    const startIso = `${year}-01-01T00:00:00.000Z`;
+    const endIso = `${year + 1}-01-01T00:00:00.000Z`;
+    const mediaTypes = ["book", "manga", "anime", "tvshow", "movie"];
+    const labels = {
+        book: "Books",
+        manga: "Manga",
+        anime: "Anime",
+        tvshow: "TV Shows",
+        movie: "Movies"
+    };
+    const legendLabels = {
+        book: "Books",
+        manga: "Manga",
+        anime: "Anime",
+        tvshow: "TV",
+        movie: "Movies"
+    };
+    const colors = {
+        book: "#f5c842",
+        manga: "#7aaee8",
+        anime: "#c084fc",
+        tvshow: "#22d3ee",
+        movie: "#a0a0a0"
+    };
 
-            <div class="chart-card" style="grid-column: 1 / -1;">
-                <div class="chart-card__label">Progress Logged — Units per Week</div>
-                <div class="chart-card__plot" id="chart-progress"></div>
-            </div>
+    const statusEl = document.getElementById("status-text");
+    const trendsGrid = document.getElementById("trends-grid");
 
-            <div class="chart-card">
-                <div class="chart-card__label">Media Type Breakdown</div>
-                <div class="chart-card__plot" id="chart-types"></div>
-            </div>
+    function monthNames() {
+        return ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    }
 
-            <div class="chart-card">
-                <div class="chart-card__label">Completion Rate</div>
-                <div class="chart-card__plot" id="chart-completion"></div>
-            </div>
+    function normalizeType(rawType) {
+        const t = String(rawType || "").toLowerCase().trim();
+        if (t === "tv show" || t === "tvshow" || t === "tv_shows" || t === "tv shows") return "tvshow";
+        if (t === "books") return "book";
+        if (t === "movies") return "movie";
+        return mediaTypes.includes(t) ? t : null;
+    }
 
-        </div>
-    </div>
+    function emptyByType() {
+        const base = {};
+        mediaTypes.forEach(type => { base[type] = 0; });
+        return base;
+    }
 
-    <script type="module">
-        import * as Plot from "https://cdn.jsdelivr.net/npm/@observablehq/plot@0.6/+esm";
+    function renderSmallTable(containerId, rows) {
+        const container = document.getElementById(containerId);
+        const table = document.createElement("table");
+        table.className = "year-table";
+        table.innerHTML = `
+            <thead><tr><th>Media Type</th><th>Value</th></tr></thead>
+            <tbody>
+                ${rows.map(r => `<tr><td>${r.label}</td><td>${r.value}</td></tr>`).join("")}
+            </tbody>
+        `;
+        const wrap = document.createElement("div");
+        wrap.className = "year-table-wrap";
+        wrap.append(table);
+        container.innerHTML = "";
+        container.append(wrap);
+    }
 
-        const ACCENT      = "#7c5cfc";
-        const ACCENT_TEXT = "#a78bfa";
-        const TEXT_FAINT  = "rgba(240,237,232,0.25)";
-        const TEXT_MUTED  = "rgba(240,237,232,0.5)";
-        const BORDER      = "rgba(255,255,255,0.07)";
+    function renderMatrixTable(containerId, headerLabel, monthRows, valuesByTypeMonth) {
+        const container = document.getElementById(containerId);
+        const table = document.createElement("table");
+        table.className = "year-table";
 
-        // ── Shared plot defaults ──────────────────────────────
-        const baseStyle = {
+        const headerCols = mediaTypes.map(t => `<th>${labels[t]}</th>`).join("");
+        const bodyRows = monthRows.map((m, idx) => {
+            const cols = mediaTypes.map(t => `<td>${valuesByTypeMonth[t][idx]}</td>`).join("");
+            return `<tr><td>${m}</td>${cols}</tr>`;
+        }).join("");
+
+        table.innerHTML = `
+            <thead><tr><th>${headerLabel}</th>${headerCols}</tr></thead>
+            <tbody>${bodyRows}</tbody>
+        `;
+
+        const wrap = document.createElement("div");
+        wrap.className = "year-table-wrap";
+        wrap.append(table);
+        container.innerHTML = "";
+        container.append(wrap);
+    }
+
+    function renderStreaks(streakRow) {
+        if (!streakRow) {
+            return;
+        }
+        const streakMap = [
+            { countId: "book-count", key: "book_streak_count" },
+            { countId: "manga-count", key: "manga_streak_count" },
+            { countId: "anime-count", key: "anime_streak_count" },
+            { countId: "tv-count", key: "tvshow_streak_count" },
+            { countId: "movie-count", key: "movie_streak_count" }
+        ];
+        streakMap.forEach(({ countId, key }) => {
+            const el = document.getElementById(countId);
+            if (el) el.textContent = Number(streakRow[key] || 0);
+        });
+    }
+
+    function makeLineChart(targetId, rows) {
+        const target = document.getElementById(targetId);
+        const width = Math.max(target.offsetWidth || 700, 700);
+        const data = rows.map(r => ({ ...r, monthDate: new Date(Date.UTC(year, r.monthIndex, 1)) }));
+        const chart = Plot.plot({
             background: "transparent",
-            color: TEXT_MUTED,
-            fontFamily: "'DM Sans', sans-serif",
-            fontSize: 11,
-        };
-
-        const axisOpts = {
-            stroke: BORDER,
-            tickStroke: "transparent",
-            labelFill: TEXT_FAINT,
-            labelFontSize: 11,
-        };
-
-        // ── Demo data ─────────────────────────────────────────
-
-        // 1. Progress logged per week (last 12 weeks)
-        const progressData = Array.from({ length: 12 }, (_, i) => {
-            const d = new Date();
-            d.setDate(d.getDate() - (11 - i) * 7);
-            return {
-                week: new Date(d.getFullYear(), d.getMonth(), d.getDate()),
-                units: Math.floor(20 + Math.random() * 120),
-            };
-        });
-
-        // 2. Media type counts
-        const typeData = [
-            { type: "Books",  count: 12 },
-            { type: "Manga",  count: 31 },
-            { type: "Anime",  count: 8  },
-            { type: "TV",     count: 5  },
-            { type: "Movies", count: 19 },
-        ];
-
-        const typeColors = {
-            Books:  "#f5c842",
-            Manga:  "#7aaee8",
-            Anime:  "#c084fc",
-            TV:     "#22d3ee",
-            Movies: "#a0a0a0",
-        };
-
-        // 3. Completion status
-        const completionData = [
-            { status: "Completed", count: 47 },
-            { status: "In Progress", count: 12 },
-            { status: "DNF",        count: 4  },
-        ];
-
-        const completionColors = {
-            "Completed":   "#4ade80",
-            "In Progress": ACCENT_TEXT,
-            "DNF":         "#f87171",
-        };
-
-        // ── Chart 1: Progress over time ───────────────────────
-        const chartProgress = Plot.plot({
-            ...baseStyle,
-            width: document.getElementById("chart-progress").offsetWidth || 600,
-            height: 200,
-            marginLeft: 40,
-            marginBottom: 36,
-            x: { type: "utc", label: null, tickFormat: "%b %d", ...axisOpts },
-            y: { label: "Units", grid: true, ...axisOpts },
+            width,
+            height: 310,
+            marginLeft: 48,
+            marginRight: 110,
+            marginBottom: 34,
+            x: {
+                type: "utc",
+                tickFormat: "%b",
+                label: null,
+                domain: [new Date(Date.UTC(year, 0, 1)), new Date(Date.UTC(year, 11, 1))]
+            },
+            y: { label: null, grid: true },
+            color: {
+                legend: true,
+                domain: mediaTypes.map(t => legendLabels[t]),
+                range: mediaTypes.map(t => colors[t])
+            },
             marks: [
-                Plot.areaY(progressData, {
-                    x: "week",
-                    y: "units",
-                    fill: ACCENT,
-                    fillOpacity: 0.12,
-                    curve: "monotone-x",
+                Plot.lineY(data, {
+                    x: "monthDate",
+                    y: "value",
+                    stroke: "mediaTypeLegendLabel",
+                    curve: "monotone-x"
                 }),
-                Plot.lineY(progressData, {
-                    x: "week",
-                    y: "units",
-                    stroke: ACCENT,
-                    strokeWidth: 2,
-                    curve: "monotone-x",
-                }),
-                Plot.dotY(progressData, {
-                    x: "week",
-                    y: "units",
-                    fill: ACCENT,
-                    r: 3,
-                }),
-            ],
+                Plot.dot(data, {
+                    x: "monthDate",
+                    y: "value",
+                    fill: "mediaTypeLegendLabel",
+                    r: 2.5
+                })
+            ]
+        });
+        target.innerHTML = "";
+        target.append(chart);
+    }
+
+    async function loadTrends() {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+            statusEl.textContent = "Please log in to view trends.";
+            return;
+        }
+
+        const [streakRes, completedRes, journalRes] = await Promise.all([
+            supabase.from("lu_user_streak").select("*").eq("user_id", user.id).maybeSingle(),
+            supabase
+                .from("lu_media_status")
+                .select("media_id,date_finished,status,lu_media(media_type)")
+                .eq("user_id", user.id)
+                .eq("status", "completed")
+                .gte("date_finished", startIso)
+                .lt("date_finished", endIso),
+            supabase
+                .from("lu_journal_entry")
+                .select("units,date_created,lu_media_status!inner(user_id,media_id,lu_media!inner(media_type))")
+                .eq("lu_media_status.user_id", user.id)
+                .gte("date_created", startIso)
+                .lt("date_created", endIso)
+        ]);
+
+        if (streakRes.error || completedRes.error || journalRes.error) {
+            statusEl.textContent = "Could not load trends right now.";
+            return;
+        }
+
+        renderStreaks(streakRes.data);
+
+        const completedRows = completedRes.data || [];
+        const journalRows = journalRes.data || [];
+        const totalsCompleted = emptyByType();
+        const totalsUnits = emptyByType();
+        const unitsByMonth = {};
+        const completedByMonth = {};
+        mediaTypes.forEach(type => {
+            unitsByMonth[type] = Array(12).fill(0);
+            completedByMonth[type] = Array(12).fill(0);
         });
 
-        document.getElementById("chart-progress").append(chartProgress);
+        for (const row of completedRows) {
+            const mediaType = normalizeType(row.lu_media?.media_type);
+            if (!mediaType || !row.date_finished) continue;
+            totalsCompleted[mediaType] += 1;
+            const monthIndex = new Date(row.date_finished).getUTCMonth();
+            completedByMonth[mediaType][monthIndex] += 1;
+        }
 
-        // ── Chart 2: Type breakdown (horizontal bar) ──────────
-        const chartTypes = Plot.plot({
-            ...baseStyle,
-            width: document.getElementById("chart-types").offsetWidth || 300,
-            height: 200,
-            marginLeft: 64,
-            marginBottom: 24,
-            x: { label: null, grid: true, ...axisOpts },
-            y: { label: null, ...axisOpts },
-            marks: [
-                Plot.barX(typeData, {
-                    x: "count",
-                    y: "type",
-                    fill: d => typeColors[d.type],
-                    fillOpacity: 0.85,
-                    rx: 2,
-                    sort: { y: "-x" },
-                }),
-                Plot.text(typeData, {
-                    x: "count",
-                    y: "type",
-                    text: d => d.count,
-                    dx: 6,
-                    fill: TEXT_MUTED,
-                    fontSize: 11,
-                    textAnchor: "start",
-                    sort: { y: "-x" },
-                }),
-            ],
+        for (const row of journalRows) {
+            const mediaType = normalizeType(row.lu_media_status?.lu_media?.media_type);
+            if (!mediaType) continue;
+            const units = Number(row.units || 0);
+            totalsUnits[mediaType] += units;
+            const monthIndex = new Date(row.date_created).getUTCMonth();
+            unitsByMonth[mediaType][monthIndex] += units;
+        }
+
+        const now = new Date();
+        const daysInScope = (now.getUTCFullYear() === year)
+            ? Math.max(1, Math.floor((Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) - Date.UTC(year, 0, 1)) / 86400000) + 1)
+            : 365;
+
+        renderSmallTable("year-total-completed", mediaTypes.map(type => ({
+            label: labels[type],
+            value: totalsCompleted[type]
+        })));
+
+        renderSmallTable("year-units-per-day", mediaTypes.map(type => ({
+            label: labels[type],
+            value: (totalsUnits[type] / daysInScope).toFixed(2)
+        })));
+
+        const months = monthNames();
+        renderMatrixTable("year-units-by-month", "Month", months, unitsByMonth);
+        renderMatrixTable("year-completed-by-month", "Month", months, completedByMonth);
+
+        const unitsChartRows = [];
+        const completedChartRows = [];
+        months.forEach((_, monthIndex) => {
+            mediaTypes.forEach(type => {
+                unitsChartRows.push({
+                    monthIndex,
+                    mediaType: type,
+                    mediaTypeLabel: labels[type],
+                    mediaTypeLegendLabel: legendLabels[type],
+                    value: unitsByMonth[type][monthIndex]
+                });
+                completedChartRows.push({
+                    monthIndex,
+                    mediaType: type,
+                    mediaTypeLabel: labels[type],
+                    mediaTypeLegendLabel: legendLabels[type],
+                    value: completedByMonth[type][monthIndex]
+                });
+            });
         });
 
-        document.getElementById("chart-types").append(chartTypes);
+        makeLineChart("chart-units", unitsChartRows);
+        makeLineChart("chart-completed", completedChartRows);
 
-        // ── Chart 3: Completion rate (bar) ────────────────────
-        const chartCompletion = Plot.plot({
-            ...baseStyle,
-            width: document.getElementById("chart-completion").offsetWidth || 300,
-            height: 200,
-            marginLeft: 80,
-            marginBottom: 24,
-            x: { label: null, grid: true, ...axisOpts },
-            y: { label: null, ...axisOpts },
-            marks: [
-                Plot.barX(completionData, {
-                    x: "count",
-                    y: "status",
-                    fill: d => completionColors[d.status],
-                    fillOpacity: 0.85,
-                    rx: 2,
-                }),
-                Plot.text(completionData, {
-                    x: "count",
-                    y: "status",
-                    text: d => d.count,
-                    dx: 6,
-                    fill: TEXT_MUTED,
-                    fontSize: 11,
-                    textAnchor: "start",
-                }),
-            ],
-        });
+        statusEl.style.display = "none";
+        trendsGrid.style.display = "grid";
+    }
 
-        document.getElementById("chart-completion").append(chartCompletion);
-    </script>
-
+    loadTrends();
+</script>
 </body>
 </html>
