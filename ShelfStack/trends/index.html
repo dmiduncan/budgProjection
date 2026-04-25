@@ -153,8 +153,94 @@
             color: var(--text-muted);
             background: var(--surface-2);
         }
-        .plot-wrap { width: 100%; overflow-x: auto; }
-        .plot-wrap svg { background: transparent !important; overflow: visible; }
+        .plot-wrap {
+            width: 100%;
+            max-width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .plot-wrap svg {
+            background: transparent !important;
+            display: block;
+            max-width: 100%;
+            height: auto;
+        }
+        .pie-pair {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+            gap: 0.55em;
+            align-items: start;
+        }
+        @media (min-width: 641px) {
+            .pie-pair { gap: 1.25em; }
+        }
+        .pie-col {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5em;
+            min-width: 0;
+        }
+        @media (min-width: 641px) {
+            .pie-col { gap: 0.75em; }
+        }
+        .pie-col__title {
+            margin: 0;
+            font-size: 0.72em;
+            color: var(--text-muted);
+            font-weight: 600;
+            text-align: center;
+            line-height: 1.25;
+        }
+        @media (min-width: 641px) {
+            .pie-col__title { font-size: 0.82em; }
+        }
+        .pie-wheel {
+            width: 100%;
+            max-width: min(200px, 34vw);
+            aspect-ratio: 1;
+            border-radius: 50%;
+            border: 1px solid var(--border);
+            flex-shrink: 0;
+            margin-inline: auto;
+        }
+        @media (min-width: 641px) {
+            .pie-wheel { max-width: 200px; }
+        }
+        .pie-legend {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            width: 100%;
+            max-width: 100%;
+            font-size: 0.68em;
+            color: var(--text-muted);
+        }
+        @media (min-width: 641px) {
+            .pie-legend { font-size: 0.78em; }
+        }
+        .pie-legend li {
+            display: flex;
+            align-items: center;
+            gap: 0.5em;
+            justify-content: space-between;
+            margin-bottom: 0.35em;
+        }
+        .pie-legend__left { display: flex; align-items: center; gap: 0.45em; min-width: 0; }
+        .pie-legend__swatch {
+            width: 10px;
+            height: 10px;
+            border-radius: 2px;
+            flex-shrink: 0;
+        }
+        .pie-legend__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .pie-legend li.pie-empty {
+            justify-content: center;
+            text-align: center;
+            white-space: normal;
+            color: var(--text-faint);
+            font-size: 0.9em;
+        }
         .note { color: var(--text-faint); font-size: 0.8em; margin-top: 0.55em; }
         .full-span { grid-column: 1 / -1; }
         .status {
@@ -194,6 +280,21 @@
                 <div class="streak-item">
                     <span class="streak-icon">Films</span>
                     <span class="streak-count" id="movie-count">0</span>
+                </div>
+            </div>
+        </div>
+        <div class="card full-span">
+            <div class="card__label">Year at a Glance</div>
+            <div class="pie-pair">
+                <div class="pie-col">
+                    <h3 class="pie-col__title">Media completed</h3>
+                    <div class="pie-wheel" id="pie-completed-wheel" role="img" aria-label="Media completed by type"></div>
+                    <ul class="pie-legend" id="pie-completed-legend"></ul>
+                </div>
+                <div class="pie-col">
+                    <h3 class="pie-col__title">Units logged</h3>
+                    <div class="pie-wheel" id="pie-units-wheel" role="img" aria-label="Units logged by type"></div>
+                    <ul class="pie-legend" id="pie-units-legend"></ul>
                 </div>
             </div>
         </div>
@@ -335,17 +436,88 @@
         });
     }
 
+    function chartWidthFor(target) {
+        const w = target?.getBoundingClientRect?.().width ?? 0;
+        if (w > 40) return Math.floor(w);
+        const app = document.getElementById("app-container");
+        const aw = app?.getBoundingClientRect?.().width ?? 0;
+        if (aw > 40) return Math.max(260, Math.floor(aw - 32));
+        return Math.max(260, Math.min(560, Math.floor(window.innerWidth - 32)));
+    }
+
+    function conicGradientFromTotals(totalsByType) {
+        const segments = mediaTypes
+            .map(type => ({
+                type,
+                label: labels[type],
+                color: colors[type],
+                value: Math.max(0, Number(totalsByType[type] || 0))
+            }))
+            .filter(s => s.value > 0);
+        const total = segments.reduce((sum, s) => sum + s.value, 0);
+        if (total <= 0) return null;
+        let pct = 0;
+        const stops = segments.map(s => {
+            const start = pct;
+            pct += (s.value / total) * 100;
+            return `${s.color} ${start.toFixed(3)}% ${pct.toFixed(3)}%`;
+        });
+        return { gradient: `conic-gradient(from -90deg, ${stops.join(", ")})`, segments, total };
+    }
+
+    function renderPiePair(totalsCompleted, totalsUnits) {
+        const completedWheel = document.getElementById("pie-completed-wheel");
+        const completedLegend = document.getElementById("pie-completed-legend");
+        const unitsWheel = document.getElementById("pie-units-wheel");
+        const unitsLegend = document.getElementById("pie-units-legend");
+
+        const completedPie = conicGradientFromTotals(totalsCompleted);
+        if (!completedPie) {
+            completedWheel.style.background = "var(--surface-3)";
+            completedLegend.innerHTML = `<li class="pie-empty">No media completed this year yet.</li>`;
+        } else {
+            completedWheel.style.background = completedPie.gradient;
+            completedLegend.innerHTML = completedPie.segments.map(s => `
+                <li>
+                    <span class="pie-legend__left">
+                        <span class="pie-legend__swatch" style="background:${s.color}"></span>
+                        <span class="pie-legend__name">${s.label}</span>
+                    </span>
+                    <span>${s.value} (${((s.value / completedPie.total) * 100).toFixed(0)}%)</span>
+                </li>
+            `).join("");
+        }
+
+        const unitsPie = conicGradientFromTotals(totalsUnits);
+        if (!unitsPie) {
+            unitsWheel.style.background = "var(--surface-3)";
+            unitsLegend.innerHTML = `<li class="pie-empty">No units logged this year yet.</li>`;
+        } else {
+            unitsWheel.style.background = unitsPie.gradient;
+            unitsLegend.innerHTML = unitsPie.segments.map(s => `
+                <li>
+                    <span class="pie-legend__left">
+                        <span class="pie-legend__swatch" style="background:${s.color}"></span>
+                        <span class="pie-legend__name">${s.label}</span>
+                    </span>
+                    <span>${s.value.toLocaleString()} (${((s.value / unitsPie.total) * 100).toFixed(0)}%)</span>
+                </li>
+            `).join("");
+        }
+    }
+
     function makeLineChart(targetId, rows) {
         const target = document.getElementById(targetId);
-        const width = Math.max(target.offsetWidth || 700, 700);
+        const width = chartWidthFor(target);
+        const narrow = width < 520;
         const data = rows.map(r => ({ ...r, monthDate: new Date(Date.UTC(year, r.monthIndex, 1)) }));
         const chart = Plot.plot({
             background: "transparent",
             width,
-            height: 310,
-            marginLeft: 48,
-            marginRight: 110,
-            marginBottom: 34,
+            height: narrow ? 340 : 310,
+            marginLeft: 44,
+            marginRight: narrow ? 10 : Math.min(100, Math.floor(width * 0.22)),
+            marginBottom: narrow ? 78 : 34,
             x: {
                 type: "utc",
                 tickFormat: "%b",
@@ -476,11 +648,15 @@
             });
         });
 
-        makeLineChart("chart-units", unitsChartRows);
-        makeLineChart("chart-completed", completedChartRows);
-
         statusEl.style.display = "none";
         trendsGrid.style.display = "grid";
+
+        renderPiePair(totalsCompleted, totalsUnits);
+
+        requestAnimationFrame(() => {
+            makeLineChart("chart-units", unitsChartRows);
+            makeLineChart("chart-completed", completedChartRows);
+        });
     }
 
     loadTrends();
