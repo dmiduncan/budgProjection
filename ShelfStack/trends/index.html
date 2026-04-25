@@ -284,10 +284,10 @@
             </div>
         </div>
         <div class="card full-span">
-            <div class="card__label">Year at a Glance</div>
+            <div class="card__label">Current Year</div>
             <div class="pie-pair">
                 <div class="pie-col">
-                    <h3 class="pie-col__title">Media completed</h3>
+                    <h3 class="pie-col__title">Completed</h3>
                     <div class="pie-wheel" id="pie-completed-wheel" role="img" aria-label="Media completed by type"></div>
                     <ul class="pie-legend" id="pie-completed-legend"></ul>
                 </div>
@@ -310,7 +310,7 @@
                 <div class="year-section">
                     <h4>Units Per Month</h4>
                     <div id="year-units-by-month"></div>
-                    <h4 style="margin-top:1em;">Media Completed Per Month</h4>
+                    <h4 style="margin-top:1em;">Completed Per Month</h4>
                     <div id="year-completed-by-month"></div>
                 </div>
             </div>
@@ -320,7 +320,7 @@
             <div class="plot-wrap" id="chart-units"></div>
         </div>
         <div class="card full-span">
-            <div class="card__label">Media Completed Per Month</div>
+            <div class="card__label">Completed Per Month</div>
             <div class="plot-wrap" id="chart-completed"></div>
         </div>
     </div>
@@ -384,7 +384,6 @@
         const table = document.createElement("table");
         table.className = "year-table";
         table.innerHTML = `
-            <thead><tr><th>Media Type</th><th>Value</th></tr></thead>
             <tbody>
                 ${rows.map(r => `<tr><td>${r.label}</td><td>${r.value}</td></tr>`).join("")}
             </tbody>
@@ -624,8 +623,8 @@
         })));
 
         const months = monthNames();
-        renderMatrixTable("year-units-by-month", "Month", months, unitsByMonth);
-        renderMatrixTable("year-completed-by-month", "Month", months, completedByMonth);
+        renderMatrixTable("year-units-by-month", "", months, unitsByMonth);
+        renderMatrixTable("year-completed-by-month", "", months, completedByMonth);
 
         const unitsChartRows = [];
         const completedChartRows = [];
