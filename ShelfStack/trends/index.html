@@ -287,6 +287,86 @@
             font-size: 0.95em;
             margin-top: 1em;
         }
+        .completed-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.55em;
+        }
+        .completed-list li {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.6em;
+            padding: 0.5em;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: var(--surface-2);
+            min-height: 86px;
+        }
+        .completed-list__cover {
+            width: 46px;
+            height: 68px;
+            border-radius: calc(var(--radius) - 2px);
+            border: 1px solid var(--border);
+            background: var(--surface-3);
+            object-fit: cover;
+            flex-shrink: 0;
+        }
+        .completed-list__cover--placeholder {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-faint);
+            font-size: 0.62em;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+        .completed-list__left {
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.16em;
+        }
+        .completed-list__title {
+            font-size: 0.8em;
+            color: var(--text);
+            line-height: 1.28;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .completed-list__meta {
+            font-size: 0.68em;
+            color: var(--text-faint);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .completed-list__date {
+            font-size: 0.68em;
+            color: var(--text-muted);
+            margin-top: auto;
+        }
+        @media (max-width: 560px) {
+            .completed-list {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 0.45em;
+            }
+            .completed-list li {
+                padding: 0.42em;
+                gap: 0.45em;
+            }
+            .completed-list__cover {
+                width: 40px;
+                height: 60px;
+            }
+            .completed-list__title { font-size: 0.74em; }
+            .completed-list__meta,
+            .completed-list__date { font-size: 0.62em; }
+        }
         @media (max-width: 1120px) {
             .year-grid { grid-template-columns: 1fr; }
         }
@@ -371,6 +451,10 @@
             <div class="card__label" id="completed-chart-label">Completed Per Month</div>
             <div class="plot-wrap" id="chart-completed"></div>
         </div>
+        <div class="card full-span" id="card-monthly-completed-list" hidden>
+            <div class="card__label" id="monthly-completed-list-label">Completed This Month</div>
+            <ul class="completed-list" id="monthly-completed-list"></ul>
+        </div>
     </div>
 </div>
 <script type="module">
@@ -423,6 +507,9 @@
     const glanceCompletedBlock = document.getElementById("glance-completed-block");
     const cardCompletedTrend = document.getElementById("card-completed-trend");
     const chartCompletedEl = document.getElementById("chart-completed");
+    const monthlyCompletedListCardEl = document.getElementById("card-monthly-completed-list");
+    const monthlyCompletedListLabelEl = document.getElementById("monthly-completed-list-label");
+    const monthlyCompletedListEl = document.getElementById("monthly-completed-list");
     const months = monthNames();
     const viewState = {
         period: "year",
@@ -645,6 +732,7 @@
         const completedByMonth = {};
         const unitsByDay = {};
         const completedByDay = {};
+        const completedItemsByMonth = Array.from({ length: 12 }, () => []);
 
         mediaTypes.forEach(type => {
             unitsByMonth[type] = Array(12).fill(0);
@@ -661,6 +749,12 @@
             const dayIndex = d.getUTCDate() - 1;
             totalsCompleted[mediaType] += 1;
             completedByMonth[mediaType][monthIndex] += 1;
+            completedItemsByMonth[monthIndex].push({
+                title: row.lu_media?.title || "Untitled",
+                mediaType,
+                date: row.date_finished,
+                coverArtUrl: row.lu_media?.cover_art_url || null
+            });
             if (completedByDay[mediaType][monthIndex][dayIndex] !== undefined) {
                 completedByDay[mediaType][monthIndex][dayIndex] += 1;
             }
@@ -680,7 +774,11 @@
             }
         }
 
-        return { totalsCompleted, totalsUnits, unitsByMonth, completedByMonth, unitsByDay, completedByDay };
+        completedItemsByMonth.forEach(items => {
+            items.sort((a, b) => new Date(b.date) - new Date(a.date));
+        });
+
+        return { totalsCompleted, totalsUnits, unitsByMonth, completedByMonth, unitsByDay, completedByDay, completedItemsByMonth };
     }
 
     function renderView(agg) {
@@ -690,6 +788,7 @@
         if (glanceCompletedBlock) glanceCompletedBlock.hidden = isMonthView;
         if (cardCompletedTrend) cardCompletedTrend.hidden = isMonthView;
         if (isMonthView && chartCompletedEl) chartCompletedEl.innerHTML = "";
+        if (monthlyCompletedListCardEl) monthlyCompletedListCardEl.hidden = !isMonthView;
 
         let scopedTotalsCompleted = emptyByType();
         let scopedTotalsUnits = emptyByType();
@@ -774,6 +873,27 @@
             });
         }
         renderPiePair(scopedTotalsCompleted, scopedTotalsUnits);
+        if (monthlyCompletedListLabelEl) {
+            monthlyCompletedListLabelEl.textContent = `${months[selectedMonth]} Completed Media`;
+        }
+        if (monthlyCompletedListEl) {
+            const items = agg.completedItemsByMonth[selectedMonth] || [];
+            monthlyCompletedListEl.innerHTML = items.length
+                ? items.map(item => `
+                    <li>
+                        ${item.coverArtUrl
+                            ? `<img class="completed-list__cover" src="${item.coverArtUrl}" alt="${item.title} cover">`
+                            : `<div class="completed-list__cover completed-list__cover--placeholder">No Art</div>`
+                        }
+                        <div class="completed-list__left">
+                            <div class="completed-list__title">${item.title}</div>
+                            <div class="completed-list__meta">${labels[item.mediaType]}</div>
+                            <div class="completed-list__date">${new Date(item.date).toLocaleDateString()}</div>
+                        </div>
+                    </li>
+                `).join("")
+                : `<li><div class="completed-list__left"><div class="completed-list__meta">No completed media for this month.</div></div></li>`;
+        }
         requestAnimationFrame(() => {
             makeLineChart("chart-units", unitsChartRows, "%-d");
         });
@@ -822,7 +942,7 @@
             supabase.from("lu_user_streak").select("*").eq("user_id", user.id).maybeSingle(),
             supabase
                 .from("lu_media_status")
-                .select("media_id,date_finished,status,lu_media(media_type)")
+                .select("media_id,date_finished,status,lu_media(media_type,title,cover_art_url)")
                 .eq("user_id", user.id)
                 .eq("status", "completed")
                 .gte("date_finished", startIso)
