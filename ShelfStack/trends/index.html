@@ -45,6 +45,45 @@
             color: var(--text-faint);
             margin-bottom: 1.1em;
         }
+        .view-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.6em;
+            flex-wrap: wrap;
+            margin: 0.25em 0 0.5em;
+            padding: 0.45em 0.55em;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: var(--surface);
+        }
+        .view-toggle {
+            display: inline-flex;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            background: var(--surface-2);
+        }
+        .view-toggle__btn {
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            padding: 0.45em 0.75em;
+            font-size: 0.78em;
+            cursor: pointer;
+        }
+        .view-toggle__btn.active {
+            background: rgba(124,92,252,0.18);
+            color: var(--accent-text);
+        }
+        .view-month {
+            border: 1px solid var(--border);
+            background: var(--surface-2);
+            color: var(--text-muted);
+            border-radius: var(--radius);
+            padding: 0.35em 0.55em;
+            font-size: 0.78em;
+        }
+        .view-month[hidden] { display: none; }
         .streak-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
@@ -257,6 +296,13 @@
 <div id="toolbar"></div>
 <div id="app-container">
     <div class="status" id="status-text">Loading trends...</div>
+    <div class="view-controls" id="view-controls">
+        <div class="view-toggle">
+            <button type="button" class="view-toggle__btn active" id="period-year-btn">Year</button>
+            <button type="button" class="view-toggle__btn" id="period-month-btn">Month</button>
+        </div>
+        <select id="month-select" class="view-month" hidden></select>
+    </div>
     <div class="trends-grid" id="trends-grid" style="display:none;">
         <div class="card">
             <div class="card__label">Active Streaks</div>
@@ -284,7 +330,7 @@
             </div>
         </div>
         <div class="card full-span">
-            <div class="card__label">Current Year</div>
+            <div class="card__label" id="scope-pie-label">Current Year</div>
             <div class="pie-pair">
                 <div class="pie-col">
                     <h3 class="pie-col__title">Completed</h3>
@@ -299,7 +345,7 @@
             </div>
         </div>
         <div class="card full-span">
-            <div class="card__label">Year At A Glance</div>
+            <div class="card__label" id="scope-glance-label">Year At A Glance</div>
             <div class="year-grid">
                 <div class="year-section">
                     <h4>Media Completed</h4>
@@ -308,19 +354,21 @@
                     <div id="year-units-per-day"></div>
                 </div>
                 <div class="year-section">
-                    <h4>Units Per Month</h4>
+                    <h4 id="units-table-heading">Units Per Month</h4>
                     <div id="year-units-by-month"></div>
-                    <h4 style="margin-top:1em;">Completed Per Month</h4>
-                    <div id="year-completed-by-month"></div>
+                    <div id="glance-completed-block">
+                        <h4 style="margin-top:1em;" id="completed-table-heading">Completed Per Month</h4>
+                        <div id="year-completed-by-month"></div>
+                    </div>
                 </div>
             </div>
         </div>
         <div class="card full-span">
-            <div class="card__label">Units Per Month</div>
+            <div class="card__label" id="units-chart-label">Units Per Month</div>
             <div class="plot-wrap" id="chart-units"></div>
         </div>
-        <div class="card full-span">
-            <div class="card__label">Completed Per Month</div>
+        <div class="card full-span" id="card-completed-trend">
+            <div class="card__label" id="completed-chart-label">Completed Per Month</div>
             <div class="plot-wrap" id="chart-completed"></div>
         </div>
     </div>
@@ -332,7 +380,9 @@
 
     initToolbar();
 
-    const year = new Date().getFullYear();
+    const now = new Date();
+    const year = now.getFullYear();
+    const currentMonthIndex = now.getMonth();
     const startIso = `${year}-01-01T00:00:00.000Z`;
     const endIso = `${year + 1}-01-01T00:00:00.000Z`;
     const mediaTypes = ["book", "manga", "anime", "tvshow", "movie"];
@@ -359,7 +409,25 @@
     };
 
     const statusEl = document.getElementById("status-text");
+    const viewControlsEl = document.getElementById("view-controls");
     const trendsGrid = document.getElementById("trends-grid");
+    const monthSelectEl = document.getElementById("month-select");
+    const periodYearBtn = document.getElementById("period-year-btn");
+    const periodMonthBtn = document.getElementById("period-month-btn");
+    const scopePieLabelEl = document.getElementById("scope-pie-label");
+    const scopeGlanceLabelEl = document.getElementById("scope-glance-label");
+    const unitsTableHeadingEl = document.getElementById("units-table-heading");
+    const completedTableHeadingEl = document.getElementById("completed-table-heading");
+    const unitsChartLabelEl = document.getElementById("units-chart-label");
+    const completedChartLabelEl = document.getElementById("completed-chart-label");
+    const glanceCompletedBlock = document.getElementById("glance-completed-block");
+    const cardCompletedTrend = document.getElementById("card-completed-trend");
+    const chartCompletedEl = document.getElementById("chart-completed");
+    const months = monthNames();
+    const viewState = {
+        period: "year",
+        monthIndex: currentMonthIndex
+    };
 
     function monthNames() {
         return ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -505,11 +573,33 @@
         }
     }
 
-    function makeLineChart(targetId, rows) {
+    function daysInMonth(targetYear, monthIndex) {
+        return new Date(targetYear, monthIndex + 1, 0).getDate();
+    }
+
+    function renderScopeLabels() {
+        if (viewState.period === "year") {
+            scopePieLabelEl.textContent = "Current Year";
+            scopeGlanceLabelEl.textContent = "Year At A Glance";
+            unitsTableHeadingEl.textContent = "Units Per Month";
+            completedTableHeadingEl.textContent = "Completed Per Month";
+            unitsChartLabelEl.textContent = "Units Per Month";
+            completedChartLabelEl.textContent = "Completed Per Month";
+            return;
+        }
+        const monthName = months[viewState.monthIndex];
+        scopePieLabelEl.textContent = `${monthName} ${year}`;
+        scopeGlanceLabelEl.textContent = `${monthName} At A Glance`;
+        unitsTableHeadingEl.textContent = "Units Per Day";
+        unitsChartLabelEl.textContent = "Units Per Day";
+    }
+
+    function makeLineChart(targetId, rows, tickFormat) {
         const target = document.getElementById(targetId);
         const width = chartWidthFor(target);
         const narrow = width < 520;
-        const data = rows.map(r => ({ ...r, monthDate: new Date(Date.UTC(year, r.monthIndex, 1)) }));
+        const data = rows;
+        const xDomain = [data[0]?.xDate, data[data.length - 1]?.xDate].filter(Boolean);
         const chart = Plot.plot({
             background: "transparent",
             width,
@@ -519,9 +609,9 @@
             marginBottom: narrow ? 78 : 34,
             x: {
                 type: "utc",
-                tickFormat: "%b",
+                tickFormat,
                 label: null,
-                domain: [new Date(Date.UTC(year, 0, 1)), new Date(Date.UTC(year, 11, 1))]
+                domain: xDomain.length === 2 ? xDomain : undefined
             },
             y: { label: null, grid: true },
             color: {
@@ -531,13 +621,13 @@
             },
             marks: [
                 Plot.lineY(data, {
-                    x: "monthDate",
+                    x: "xDate",
                     y: "value",
                     stroke: "mediaTypeLegendLabel",
                     curve: "monotone-x"
                 }),
                 Plot.dot(data, {
-                    x: "monthDate",
+                    x: "xDate",
                     y: "value",
                     fill: "mediaTypeLegendLabel",
                     r: 2.5
@@ -546,6 +636,179 @@
         });
         target.innerHTML = "";
         target.append(chart);
+    }
+
+    function buildAggregates(completedRows, journalRows) {
+        const totalsCompleted = emptyByType();
+        const totalsUnits = emptyByType();
+        const unitsByMonth = {};
+        const completedByMonth = {};
+        const unitsByDay = {};
+        const completedByDay = {};
+
+        mediaTypes.forEach(type => {
+            unitsByMonth[type] = Array(12).fill(0);
+            completedByMonth[type] = Array(12).fill(0);
+            unitsByDay[type] = Array.from({ length: 12 }, (_, monthIndex) => Array(daysInMonth(year, monthIndex)).fill(0));
+            completedByDay[type] = Array.from({ length: 12 }, (_, monthIndex) => Array(daysInMonth(year, monthIndex)).fill(0));
+        });
+
+        for (const row of completedRows) {
+            const mediaType = normalizeType(row.lu_media?.media_type);
+            if (!mediaType || !row.date_finished) continue;
+            const d = new Date(row.date_finished);
+            const monthIndex = d.getUTCMonth();
+            const dayIndex = d.getUTCDate() - 1;
+            totalsCompleted[mediaType] += 1;
+            completedByMonth[mediaType][monthIndex] += 1;
+            if (completedByDay[mediaType][monthIndex][dayIndex] !== undefined) {
+                completedByDay[mediaType][monthIndex][dayIndex] += 1;
+            }
+        }
+
+        for (const row of journalRows) {
+            const mediaType = normalizeType(row.lu_media_status?.lu_media?.media_type);
+            if (!mediaType) continue;
+            const units = Number(row.units || 0);
+            const d = new Date(row.date_created);
+            const monthIndex = d.getUTCMonth();
+            const dayIndex = d.getUTCDate() - 1;
+            totalsUnits[mediaType] += units;
+            unitsByMonth[mediaType][monthIndex] += units;
+            if (unitsByDay[mediaType][monthIndex][dayIndex] !== undefined) {
+                unitsByDay[mediaType][monthIndex][dayIndex] += units;
+            }
+        }
+
+        return { totalsCompleted, totalsUnits, unitsByMonth, completedByMonth, unitsByDay, completedByDay };
+    }
+
+    function renderView(agg) {
+        renderScopeLabels();
+
+        const isMonthView = viewState.period === "month";
+        if (glanceCompletedBlock) glanceCompletedBlock.hidden = isMonthView;
+        if (cardCompletedTrend) cardCompletedTrend.hidden = isMonthView;
+        if (isMonthView && chartCompletedEl) chartCompletedEl.innerHTML = "";
+
+        let scopedTotalsCompleted = emptyByType();
+        let scopedTotalsUnits = emptyByType();
+        let avgDivisor = 1;
+
+        if (viewState.period === "year") {
+            scopedTotalsCompleted = agg.totalsCompleted;
+            scopedTotalsUnits = agg.totalsUnits;
+            avgDivisor = (now.getUTCFullYear() === year)
+                ? Math.max(1, Math.floor((Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) - Date.UTC(year, 0, 1)) / 86400000) + 1)
+                : 365;
+        } else {
+            const monthIndex = viewState.monthIndex;
+            mediaTypes.forEach(type => {
+                scopedTotalsCompleted[type] = agg.completedByMonth[type][monthIndex];
+                scopedTotalsUnits[type] = agg.unitsByMonth[type][monthIndex];
+            });
+            if (now.getUTCFullYear() === year && now.getUTCMonth() === monthIndex) {
+                avgDivisor = Math.max(1, now.getUTCDate());
+            } else {
+                avgDivisor = daysInMonth(year, monthIndex);
+            }
+        }
+
+        renderSmallTable("year-total-completed", mediaTypes.map(type => ({
+            label: labels[type],
+            value: scopedTotalsCompleted[type]
+        })));
+
+        renderSmallTable("year-units-per-day", mediaTypes.map(type => ({
+            label: labels[type],
+            value: (scopedTotalsUnits[type] / avgDivisor).toFixed(2)
+        })));
+
+        if (viewState.period === "year") {
+            renderMatrixTable("year-units-by-month", "", months, agg.unitsByMonth);
+            renderMatrixTable("year-completed-by-month", "", months, agg.completedByMonth);
+        } else {
+            const m = viewState.monthIndex;
+            const dayRows = Array.from({ length: daysInMonth(year, m) }, (_, i) => String(i + 1));
+            const unitsByDaySlice = {};
+            mediaTypes.forEach(type => {
+                unitsByDaySlice[type] = agg.unitsByDay[type][m];
+            });
+            renderMatrixTable("year-units-by-month", "Day", dayRows, unitsByDaySlice);
+        }
+
+        const unitsChartRows = [];
+        const completedChartRows = [];
+        if (viewState.period === "year") {
+            months.forEach((_, monthIndex) => {
+                mediaTypes.forEach(type => {
+                    unitsChartRows.push({
+                        xDate: new Date(Date.UTC(year, monthIndex, 1)),
+                        mediaTypeLegendLabel: legendLabels[type],
+                        value: agg.unitsByMonth[type][monthIndex]
+                    });
+                    completedChartRows.push({
+                        xDate: new Date(Date.UTC(year, monthIndex, 1)),
+                        mediaTypeLegendLabel: legendLabels[type],
+                        value: agg.completedByMonth[type][monthIndex]
+                    });
+                });
+            });
+            renderPiePair(scopedTotalsCompleted, scopedTotalsUnits);
+            requestAnimationFrame(() => {
+                makeLineChart("chart-units", unitsChartRows, "%b");
+                makeLineChart("chart-completed", completedChartRows, "%b");
+            });
+            return;
+        }
+
+        const selectedMonth = viewState.monthIndex;
+        const totalDays = daysInMonth(year, selectedMonth);
+        for (let day = 1; day <= totalDays; day += 1) {
+            mediaTypes.forEach(type => {
+                unitsChartRows.push({
+                    xDate: new Date(Date.UTC(year, selectedMonth, day)),
+                    mediaTypeLegendLabel: legendLabels[type],
+                    value: agg.unitsByDay[type][selectedMonth][day - 1]
+                });
+            });
+        }
+        renderPiePair(scopedTotalsCompleted, scopedTotalsUnits);
+        requestAnimationFrame(() => {
+            makeLineChart("chart-units", unitsChartRows, "%-d");
+        });
+    }
+
+    function setupViewControls(agg) {
+        monthSelectEl.innerHTML = months
+            .map((name, index) => `<option value="${index}" ${index === currentMonthIndex ? "selected" : ""}>${name}</option>`)
+            .join("");
+
+        function syncControls() {
+            const monthMode = viewState.period === "month";
+            periodYearBtn.classList.toggle("active", !monthMode);
+            periodMonthBtn.classList.toggle("active", monthMode);
+            monthSelectEl.hidden = !monthMode;
+        }
+
+        periodYearBtn.addEventListener("click", () => {
+            viewState.period = "year";
+            syncControls();
+            renderView(agg);
+        });
+
+        periodMonthBtn.addEventListener("click", () => {
+            viewState.period = "month";
+            syncControls();
+            renderView(agg);
+        });
+
+        monthSelectEl.addEventListener("change", (event) => {
+            viewState.monthIndex = Number(event.target.value || 0);
+            renderView(agg);
+        });
+
+        syncControls();
     }
 
     async function loadTrends() {
@@ -581,81 +844,13 @@
 
         const completedRows = completedRes.data || [];
         const journalRows = journalRes.data || [];
-        const totalsCompleted = emptyByType();
-        const totalsUnits = emptyByType();
-        const unitsByMonth = {};
-        const completedByMonth = {};
-        mediaTypes.forEach(type => {
-            unitsByMonth[type] = Array(12).fill(0);
-            completedByMonth[type] = Array(12).fill(0);
-        });
-
-        for (const row of completedRows) {
-            const mediaType = normalizeType(row.lu_media?.media_type);
-            if (!mediaType || !row.date_finished) continue;
-            totalsCompleted[mediaType] += 1;
-            const monthIndex = new Date(row.date_finished).getUTCMonth();
-            completedByMonth[mediaType][monthIndex] += 1;
-        }
-
-        for (const row of journalRows) {
-            const mediaType = normalizeType(row.lu_media_status?.lu_media?.media_type);
-            if (!mediaType) continue;
-            const units = Number(row.units || 0);
-            totalsUnits[mediaType] += units;
-            const monthIndex = new Date(row.date_created).getUTCMonth();
-            unitsByMonth[mediaType][monthIndex] += units;
-        }
-
-        const now = new Date();
-        const daysInScope = (now.getUTCFullYear() === year)
-            ? Math.max(1, Math.floor((Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) - Date.UTC(year, 0, 1)) / 86400000) + 1)
-            : 365;
-
-        renderSmallTable("year-total-completed", mediaTypes.map(type => ({
-            label: labels[type],
-            value: totalsCompleted[type]
-        })));
-
-        renderSmallTable("year-units-per-day", mediaTypes.map(type => ({
-            label: labels[type],
-            value: (totalsUnits[type] / daysInScope).toFixed(2)
-        })));
-
-        const months = monthNames();
-        renderMatrixTable("year-units-by-month", "", months, unitsByMonth);
-        renderMatrixTable("year-completed-by-month", "", months, completedByMonth);
-
-        const unitsChartRows = [];
-        const completedChartRows = [];
-        months.forEach((_, monthIndex) => {
-            mediaTypes.forEach(type => {
-                unitsChartRows.push({
-                    monthIndex,
-                    mediaType: type,
-                    mediaTypeLabel: labels[type],
-                    mediaTypeLegendLabel: legendLabels[type],
-                    value: unitsByMonth[type][monthIndex]
-                });
-                completedChartRows.push({
-                    monthIndex,
-                    mediaType: type,
-                    mediaTypeLabel: labels[type],
-                    mediaTypeLegendLabel: legendLabels[type],
-                    value: completedByMonth[type][monthIndex]
-                });
-            });
-        });
+        const agg = buildAggregates(completedRows, journalRows);
 
         statusEl.style.display = "none";
+        viewControlsEl.style.display = "flex";
         trendsGrid.style.display = "grid";
-
-        renderPiePair(totalsCompleted, totalsUnits);
-
-        requestAnimationFrame(() => {
-            makeLineChart("chart-units", unitsChartRows);
-            makeLineChart("chart-completed", completedChartRows);
-        });
+        setupViewControls(agg);
+        renderView(agg);
     }
 
     loadTrends();
