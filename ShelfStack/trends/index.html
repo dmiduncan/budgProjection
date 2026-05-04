@@ -222,6 +222,14 @@
             color: var(--text-muted);
             background: var(--surface-2);
         }
+        .year-table tfoot td {
+            border-top: 2px solid rgba(255, 255, 255, 0.15);
+            border-bottom: none;
+            background: var(--surface-2);
+        }
+        .year-table tfoot td:first-child {
+            background: var(--surface-2);
+        }
         .plot-wrap {
             width: 100%;
             max-width: 100%;
@@ -632,9 +640,16 @@
             return `<tr><td>${m}</td>${cols}</tr>`;
         }).join("");
 
+        const totalCols = mediaTypes.map(t => {
+            const total = valuesByTypeMonth[t].reduce((sum, v) => sum + (Number(v) || 0), 0);
+            return `<td><strong>${total.toLocaleString()}</strong></td>`;
+        }).join("");
+        const footerRow = `<tr><td><strong>Total</strong></td>${totalCols}</tr>`;
+
         table.innerHTML = `
             <thead><tr><th>${headerLabel}</th>${headerCols}</tr></thead>
             <tbody>${bodyRows}</tbody>
+            <tfoot>${footerRow}</tfoot>
         `;
 
         const wrap = document.createElement("div");
