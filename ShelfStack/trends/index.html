@@ -45,6 +45,36 @@
             color: var(--text-faint);
             margin-bottom: 1.1em;
         }
+        /* Collapsible card header */
+        .card__label--collapsible {
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0;
+            user-select: none;
+        }
+        .card__label--collapsible::after {
+            content: "▲";
+            font-size: 0.75em;
+            transition: transform 0.2s ease;
+            display: inline-block;
+        }
+        .card__label--collapsible.collapsed::after {
+            transform: rotate(180deg);
+        }
+        .card__collapsible-body {
+            overflow: hidden;
+            transition: max-height 0.3s ease, opacity 0.3s ease, margin-top 0.3s ease;
+            max-height: 2000px;
+            opacity: 1;
+            margin-top: 1.1em;
+        }
+        .card__collapsible-body.collapsed {
+            max-height: 0;
+            opacity: 0;
+            margin-top: 0;
+        }
         .view-controls {
             display: flex;
             align-items: center;
@@ -240,6 +270,7 @@
             aspect-ratio: 1;
             border-radius: 50%;
             border: 1px solid var(--border);
+            background: var(--surface-3);
             flex-shrink: 0;
             margin-inline: auto;
         }
@@ -384,7 +415,9 @@
         <select id="month-select" class="view-month" hidden></select>
     </div>
     <div class="trends-grid" id="trends-grid" style="display:none;">
-        <div class="card">
+
+        <!-- Active Streaks: hidden in month view -->
+        <div class="card" id="card-streaks">
             <div class="card__label">Active Streaks</div>
             <div class="streak-bar" id="streaks-container">
                 <div class="streak-item">
@@ -409,6 +442,16 @@
                 </div>
             </div>
         </div>
+
+        <!-- Month-only: Completed list at the top, collapsible -->
+        <div class="card full-span" id="card-monthly-completed-list" hidden>
+            <div class="card__label card__label--collapsible" id="monthly-completed-list-label">Completed This Month</div>
+            <div class="card__collapsible-body" id="monthly-completed-list-body">
+                <ul class="completed-list" id="monthly-completed-list"></ul>
+            </div>
+        </div>
+
+        <!-- Pie charts -->
         <div class="card full-span">
             <div class="card__label" id="scope-pie-label">Current Year</div>
             <div class="pie-pair">
@@ -424,6 +467,26 @@
                 </div>
             </div>
         </div>
+
+        <!-- Units chart (Year: per month, Month: per day) — now below pies -->
+        <div class="card full-span">
+            <div class="card__label" id="units-chart-label">Units Per Month</div>
+            <div class="plot-wrap" id="chart-units"></div>
+        </div>
+
+        <!-- Month-only: Cumulative units per day -->
+        <div class="card full-span" id="card-cumulative-units" hidden>
+            <div class="card__label" id="cumulative-chart-label">Cumulative Units Per Day</div>
+            <div class="plot-wrap" id="chart-cumulative-units"></div>
+        </div>
+
+        <!-- Completed trend chart (Year only) -->
+        <div class="card full-span" id="card-completed-trend">
+            <div class="card__label" id="completed-chart-label">Completed Per Month</div>
+            <div class="plot-wrap" id="chart-completed"></div>
+        </div>
+
+        <!-- At A Glance: moved below charts -->
         <div class="card full-span">
             <div class="card__label" id="scope-glance-label">Year At A Glance</div>
             <div class="year-grid">
@@ -443,18 +506,7 @@
                 </div>
             </div>
         </div>
-        <div class="card full-span">
-            <div class="card__label" id="units-chart-label">Units Per Month</div>
-            <div class="plot-wrap" id="chart-units"></div>
-        </div>
-        <div class="card full-span" id="card-completed-trend">
-            <div class="card__label" id="completed-chart-label">Completed Per Month</div>
-            <div class="plot-wrap" id="chart-completed"></div>
-        </div>
-        <div class="card full-span" id="card-monthly-completed-list" hidden>
-            <div class="card__label" id="monthly-completed-list-label">Completed This Month</div>
-            <ul class="completed-list" id="monthly-completed-list"></ul>
-        </div>
+
     </div>
 </div>
 <script type="module">
@@ -492,6 +544,11 @@
         movie: "#a0a0a0"
     };
 
+    const fullMonthNames = [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+    ];
+
     const statusEl = document.getElementById("status-text");
     const viewControlsEl = document.getElementById("view-controls");
     const trendsGrid = document.getElementById("trends-grid");
@@ -509,12 +566,26 @@
     const chartCompletedEl = document.getElementById("chart-completed");
     const monthlyCompletedListCardEl = document.getElementById("card-monthly-completed-list");
     const monthlyCompletedListLabelEl = document.getElementById("monthly-completed-list-label");
+    const monthlyCompletedListBodyEl = document.getElementById("monthly-completed-list-body");
     const monthlyCompletedListEl = document.getElementById("monthly-completed-list");
+    const cardStreaksEl = document.getElementById("card-streaks");
+    const cardCumulativeUnitsEl = document.getElementById("card-cumulative-units");
+    const cumulativeChartLabelEl = document.getElementById("cumulative-chart-label");
+
     const months = monthNames();
     const viewState = {
         period: "year",
         monthIndex: currentMonthIndex
     };
+
+    // Collapsible toggle
+    monthlyCompletedListLabelEl.addEventListener("click", () => {
+        const collapsed = monthlyCompletedListBodyEl.classList.toggle("collapsed");
+        monthlyCompletedListLabelEl.classList.toggle("collapsed", collapsed);
+    });
+
+    monthlyCompletedListBodyEl.classList.add("collapsed");
+    monthlyCompletedListLabelEl.classList.add("collapsed");
 
     function monthNames() {
         return ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -574,9 +645,7 @@
     }
 
     function renderStreaks(streakRow) {
-        if (!streakRow) {
-            return;
-        }
+        if (!streakRow) return;
         const streakMap = [
             { countId: "book-count", key: "book_streak_count" },
             { countId: "manga-count", key: "manga_streak_count" },
@@ -674,11 +743,12 @@
             completedChartLabelEl.textContent = "Completed Per Month";
             return;
         }
-        const monthName = months[viewState.monthIndex];
+        const monthName = fullMonthNames[viewState.monthIndex];
         scopePieLabelEl.textContent = `${monthName} ${year}`;
         scopeGlanceLabelEl.textContent = `${monthName} At A Glance`;
         unitsTableHeadingEl.textContent = "Units Per Day";
         unitsChartLabelEl.textContent = "Units Per Day";
+        cumulativeChartLabelEl.textContent = `Cumulative Units — ${monthName}`;
     }
 
     function makeLineChart(targetId, rows, tickFormat) {
@@ -745,8 +815,8 @@
             const mediaType = normalizeType(row.lu_media?.media_type);
             if (!mediaType || !row.date_finished) continue;
             const d = new Date(row.date_finished);
-            const monthIndex = d.getUTCMonth();
-            const dayIndex = d.getUTCDate() - 1;
+            const monthIndex = d.getMonth();
+            const dayIndex = d.getDate() - 1;
             totalsCompleted[mediaType] += 1;
             completedByMonth[mediaType][monthIndex] += 1;
             completedItemsByMonth[monthIndex].push({
@@ -765,8 +835,8 @@
             if (!mediaType) continue;
             const units = Number(row.units || 0);
             const d = new Date(row.date_created);
-            const monthIndex = d.getUTCMonth();
-            const dayIndex = d.getUTCDate() - 1;
+            const monthIndex = d.getMonth();
+            const dayIndex = d.getDate() - 1;
             totalsUnits[mediaType] += units;
             unitsByMonth[mediaType][monthIndex] += units;
             if (unitsByDay[mediaType][monthIndex][dayIndex] !== undefined) {
@@ -785,9 +855,19 @@
         renderScopeLabels();
 
         const isMonthView = viewState.period === "month";
+
+        // Show/hide streaks card
+        if (cardStreaksEl) cardStreaksEl.hidden = isMonthView;
+
+        // Show/hide completed trend chart (year only)
         if (glanceCompletedBlock) glanceCompletedBlock.hidden = isMonthView;
         if (cardCompletedTrend) cardCompletedTrend.hidden = isMonthView;
         if (isMonthView && chartCompletedEl) chartCompletedEl.innerHTML = "";
+
+        // Show/hide cumulative chart (month only)
+        if (cardCumulativeUnitsEl) cardCumulativeUnitsEl.hidden = !isMonthView;
+
+        // Show/hide monthly completed list (month only)
         if (monthlyCompletedListCardEl) monthlyCompletedListCardEl.hidden = !isMonthView;
 
         let scopedTotalsCompleted = emptyByType();
@@ -838,6 +918,7 @@
 
         const unitsChartRows = [];
         const completedChartRows = [];
+
         if (viewState.period === "year") {
             months.forEach((_, monthIndex) => {
                 mediaTypes.forEach(type => {
@@ -858,11 +939,15 @@
                 makeLineChart("chart-units", unitsChartRows, "%b");
                 makeLineChart("chart-completed", completedChartRows, "%b");
             });
+
+            // Render monthly completed list label update (for when switching back to month later)
             return;
         }
 
+        // Month view
         const selectedMonth = viewState.monthIndex;
         const totalDays = daysInMonth(year, selectedMonth);
+
         for (let day = 1; day <= totalDays; day += 1) {
             mediaTypes.forEach(type => {
                 unitsChartRows.push({
@@ -872,9 +957,26 @@
                 });
             });
         }
+
+        // Build cumulative chart rows
+        const cumulativeChartRows = [];
+        mediaTypes.forEach(type => {
+            let runningTotal = 0;
+            for (let day = 1; day <= totalDays; day += 1) {
+                runningTotal += agg.unitsByDay[type][selectedMonth][day - 1];
+                cumulativeChartRows.push({
+                    xDate: new Date(Date.UTC(year, selectedMonth, day)),
+                    mediaTypeLegendLabel: legendLabels[type],
+                    value: runningTotal
+                });
+            }
+        });
+
         renderPiePair(scopedTotalsCompleted, scopedTotalsUnits);
+
+        // Render completed list
         if (monthlyCompletedListLabelEl) {
-            monthlyCompletedListLabelEl.textContent = `${months[selectedMonth]} Completed Media`;
+            monthlyCompletedListLabelEl.textContent = `${fullMonthNames[selectedMonth]} Completed Media`;
         }
         if (monthlyCompletedListEl) {
             const items = agg.completedItemsByMonth[selectedMonth] || [];
@@ -894,8 +996,10 @@
                 `).join("")
                 : `<li><div class="completed-list__left"><div class="completed-list__meta">No completed media for this month.</div></div></li>`;
         }
+
         requestAnimationFrame(() => {
             makeLineChart("chart-units", unitsChartRows, "%-d");
+            makeLineChart("chart-cumulative-units", cumulativeChartRows, "%-d");
         });
     }
 
