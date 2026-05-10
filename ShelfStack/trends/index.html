@@ -45,7 +45,6 @@
             color: var(--text-faint);
             margin-bottom: 1.1em;
         }
-        /* Collapsible card header */
         .card__label--collapsible {
             cursor: pointer;
             display: flex;
@@ -417,10 +416,10 @@
     <div class="status" id="status-text">Loading trends...</div>
     <div class="view-controls" id="view-controls">
         <div class="view-toggle">
-            <button type="button" class="view-toggle__btn active" id="period-year-btn">Year</button>
-            <button type="button" class="view-toggle__btn" id="period-month-btn">Month</button>
+            <button type="button" class="view-toggle__btn" id="period-year-btn">Year</button>
+            <button type="button" class="view-toggle__btn active" id="period-month-btn">Month</button>
         </div>
-        <select id="month-select" class="view-month" hidden></select>
+        <select id="month-select" class="view-month"></select>
     </div>
     <div class="trends-grid" id="trends-grid" style="display:none;">
 
@@ -476,14 +475,14 @@
             </div>
         </div>
 
-        <!-- Units chart (Year: per month, Month: per day) — now below pies -->
+        <!-- Units chart (Year: per month, Month: per day) -->
         <div class="card full-span">
             <div class="card__label" id="units-chart-label">Units Per Month</div>
             <div class="plot-wrap" id="chart-units"></div>
         </div>
 
-        <!-- Month-only: Cumulative units per day -->
-        <div class="card full-span" id="card-cumulative-units" hidden>
+        <!-- Cumulative units chart — shown in both year and month views -->
+        <div class="card full-span" id="card-cumulative-units">
             <div class="card__label" id="cumulative-chart-label">Cumulative Units Per Day</div>
             <div class="plot-wrap" id="chart-cumulative-units"></div>
         </div>
@@ -494,7 +493,7 @@
             <div class="plot-wrap" id="chart-completed"></div>
         </div>
 
-        <!-- At A Glance: moved below charts -->
+        <!-- At A Glance -->
         <div class="card full-span">
             <div class="card__label" id="scope-glance-label">Year At A Glance</div>
             <div class="year-grid">
@@ -581,8 +580,10 @@
     const cumulativeChartLabelEl = document.getElementById("cumulative-chart-label");
 
     const months = monthNames();
+
+    // Default to month view
     const viewState = {
-        period: "year",
+        period: "month",
         monthIndex: currentMonthIndex
     };
 
@@ -756,6 +757,7 @@
             completedTableHeadingEl.textContent = "Completed Per Month";
             unitsChartLabelEl.textContent = "Units Per Month";
             completedChartLabelEl.textContent = "Completed Per Month";
+            cumulativeChartLabelEl.textContent = `Cumulative Units — ${year}`;
             return;
         }
         const monthName = fullMonthNames[viewState.monthIndex];
@@ -871,16 +873,16 @@
 
         const isMonthView = viewState.period === "month";
 
-        // Show/hide streaks card
+        // Show/hide streaks card (year only)
         if (cardStreaksEl) cardStreaksEl.hidden = isMonthView;
 
-        // Show/hide completed trend chart (year only)
+        // Show/hide completed trend chart and table (year only)
         if (glanceCompletedBlock) glanceCompletedBlock.hidden = isMonthView;
         if (cardCompletedTrend) cardCompletedTrend.hidden = isMonthView;
         if (isMonthView && chartCompletedEl) chartCompletedEl.innerHTML = "";
 
-        // Show/hide cumulative chart (month only)
-        if (cardCumulativeUnitsEl) cardCumulativeUnitsEl.hidden = !isMonthView;
+        // Cumulative chart always visible in both views
+        if (cardCumulativeUnitsEl) cardCumulativeUnitsEl.hidden = false;
 
         // Show/hide monthly completed list (month only)
         if (monthlyCompletedListCardEl) monthlyCompletedListCardEl.hidden = !isMonthView;
@@ -933,6 +935,7 @@
 
         const unitsChartRows = [];
         const completedChartRows = [];
+        const cumulativeChartRows = [];
 
         if (viewState.period === "year") {
             months.forEach((_, monthIndex) => {
@@ -949,13 +952,27 @@
                     });
                 });
             });
+
+            // Build cumulative units by month for the year — running total per media type
+            mediaTypes.forEach(type => {
+                let runningTotal = 0;
+                months.forEach((_, monthIndex) => {
+                    runningTotal += agg.unitsByMonth[type][monthIndex];
+                    cumulativeChartRows.push({
+                        xDate: new Date(Date.UTC(year, monthIndex, 1)),
+                        mediaTypeLegendLabel: legendLabels[type],
+                        value: runningTotal
+                    });
+                });
+            });
+
             renderPiePair(scopedTotalsCompleted, scopedTotalsUnits);
             requestAnimationFrame(() => {
                 makeLineChart("chart-units", unitsChartRows, "%b");
                 makeLineChart("chart-completed", completedChartRows, "%b");
+                makeLineChart("chart-cumulative-units", cumulativeChartRows, "%b");
             });
 
-            // Render monthly completed list label update (for when switching back to month later)
             return;
         }
 
@@ -973,8 +990,7 @@
             });
         }
 
-        // Build cumulative chart rows
-        const cumulativeChartRows = [];
+        // Build cumulative chart rows for month view
         mediaTypes.forEach(type => {
             let runningTotal = 0;
             for (let day = 1; day <= totalDays; day += 1) {
