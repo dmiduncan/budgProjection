@@ -20,6 +20,7 @@ import { showToast } from '../toast.js';
 
 let currentModalMediaId   = null;
 let currentConfirmAction  = null;
+let saveInProgress = false;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -62,61 +63,73 @@ export function closeUpdateModal() {
 }
 
 export async function saveProgress(newValue) {
+    // Prevent duplicate submission
+    if (saveInProgress) {
+        console.warn('Save already in progress');
+        return;
+    }
+
     if (currentModalMediaId === null) return;
 
-    const { trackedMedia, user } = getState();
-    const mediaItem = trackedMedia.find(m => m.id === currentModalMediaId);
+    saveInProgress = true;
 
-    if (!mediaItem || !mediaItem.statusId) {
-        showToast('Media item not found.', 'error');
-        return;
-    }
+    try {
+        const { trackedMedia, user } = getState();
+        const mediaItem = trackedMedia.find(m => m.id === currentModalMediaId);
 
-    const newPage = parseInt(newValue, 10);
-    if (isNaN(newPage) || newPage < 0 || newPage > (mediaItem.totalPages || 1)) {
-        showToast(`Please enter a value between 0 and ${mediaItem.totalPages || 1}.`, 'error');
-        return;
-    }
-
-    const journalUnits  = newPage - (mediaItem.currentPage || 0);
-    const isAutoFinish  = newPage === (mediaItem.totalPages || 1);
-
-    const updateData = {
-        current_units:       newPage,
-        percentage_complete: calculatePercentage(newPage, mediaItem.totalPages || 1)
-    };
-
-    if (isAutoFinish) {
-        updateData.status        = MediaStatus.COMPLETED;
-        updateData.date_finished = new Date().toISOString().split('T')[0];
-    }
-
-    const { error } = await updateMediaStatus(mediaItem.statusId, user.id, updateData);
-    if (error) {
-        showToast('Error updating progress: ' + error.message, 'error');
-        return;
-    }
-
-    if (journalUnits !== 0) {
-        const { error: jErr } = await insertJournalEntry(mediaItem.statusId, user.id, journalUnits);
-        if (jErr) {
-            console.warn('Journal entry failed (progress still saved):', jErr);
-        } else {
-            await updateStreakForMediaType(user.id, mediaItem.mediaType);
+        if (!mediaItem || !mediaItem.statusId) {
+            showToast('Media item not found.', 'error');
+            return;
         }
-    }
 
-    if (isAutoFinish) {
-        const { completedMediaIds } = getState();
-        completedMediaIds.add(mediaItem.id);
-        setState({ completedMediaIds });
-        showToast(`"${mediaItem.title}" completed!`, 'success');
-    } else {
-        showToast('Progress saved.', 'success');
-    }
+        const newPage = parseInt(newValue, 10);
+        if (isNaN(newPage) || newPage < 0 || newPage > (mediaItem.totalPages || 1)) {
+            showToast(`Please enter a value between 0 and ${mediaItem.totalPages || 1}.`, 'error');
+            return;
+        }
 
-    await reloadTrackedMedia();
-    closeUpdateModal();
+        const journalUnits  = newPage - (mediaItem.currentPage || 0);
+        const isAutoFinish  = newPage === (mediaItem.totalPages || 1);
+
+        const updateData = {
+            current_units:       newPage,
+            percentage_complete: calculatePercentage(newPage, mediaItem.totalPages || 1)
+        };
+
+        if (isAutoFinish) {
+            updateData.status        = MediaStatus.COMPLETED;
+            updateData.date_finished = new Date().toISOString().split('T')[0];
+        }
+
+        const { error } = await updateMediaStatus(mediaItem.statusId, user.id, updateData);
+        if (error) {
+            showToast('Error updating progress: ' + error.message, 'error');
+            return;
+        }
+
+        if (journalUnits !== 0) {
+            const { error: jErr } = await insertJournalEntry(mediaItem.statusId, user.id, journalUnits);
+            if (jErr) {
+                console.warn('Journal entry failed (progress still saved):', jErr);
+            } else {
+                await updateStreakForMediaType(user.id, mediaItem.mediaType);
+            }
+        }
+
+        if (isAutoFinish) {
+            const { completedMediaIds } = getState();
+            completedMediaIds.add(mediaItem.id);
+            setState({ completedMediaIds });
+            showToast(`"${mediaItem.title}" completed!`, 'success');
+        } else {
+            showToast('Progress saved.', 'success');
+        }
+
+        await reloadTrackedMedia();
+        closeUpdateModal();
+    } finally {
+        saveInProgress = false;
+    }
 }
 
 export async function finishMedia() {
