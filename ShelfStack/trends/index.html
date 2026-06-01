@@ -831,7 +831,8 @@
         for (const row of completedRows) {
             const mediaType = normalizeType(row.lu_media?.media_type);
             if (!mediaType || !row.date_finished) continue;
-            const d = new Date(row.date_finished);
+            // date finished isn't stored in timestampz and we force Z on for parsing.
+            const d = new Date(row.date_finished.endsWith("Z") ? row.date_finished : row.date_finished + "Z");
             const monthIndex = d.getMonth();
             const dayIndex = d.getDate() - 1;
             totalsCompleted[mediaType] += 1;
