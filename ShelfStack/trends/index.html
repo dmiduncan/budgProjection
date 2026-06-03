@@ -895,8 +895,8 @@
         if (viewState.period === "year") {
             scopedTotalsCompleted = agg.totalsCompleted;
             scopedTotalsUnits = agg.totalsUnits;
-            avgDivisor = (now.getUTCFullYear() === year)
-                ? Math.max(1, Math.floor((Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) - Date.UTC(year, 0, 1)) / 86400000) + 1)
+            avgDivisor = (now.getFullYear() === year)
+                ? Math.max(1, Math.floor((Date.UTC(now.getUTCFullYear(), now.getMonth(), now.getDate()) - Date.UTC(year, 0, 1)) / 86400000) + 1)
                 : 365;
         } else {
             const monthIndex = viewState.monthIndex;
@@ -904,8 +904,8 @@
                 scopedTotalsCompleted[type] = agg.completedByMonth[type][monthIndex];
                 scopedTotalsUnits[type] = agg.unitsByMonth[type][monthIndex];
             });
-            if (now.getUTCFullYear() === year && now.getUTCMonth() === monthIndex) {
-                avgDivisor = Math.max(1, now.getUTCDate());
+            if (now.getFullYear() === year && now.getMonth() === monthIndex) {
+                avgDivisor = Math.max(1, now.getDate());
             } else {
                 avgDivisor = daysInMonth(year, monthIndex);
             }
