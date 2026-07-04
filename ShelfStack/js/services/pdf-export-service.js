@@ -369,16 +369,19 @@ function createCumulativeUnitsChart(agg, width = 800, height = 300) {
  * Generate PDF using jsPDF
  */
 export async function generateTrendsPDF(year, monthIndex) {
-    // Load dependencies
-    if (typeof jsPDF === 'undefined') {
+    // Ensure we're running in a browser environment and the jsPDF library is available.
+    const globalObj = (typeof window !== 'undefined') ? window : (typeof globalThis !== 'undefined' ? globalThis : null);
+    const jsPDFCtor = globalObj && ((globalObj.jspdf && globalObj.jspdf.jsPDF) || globalObj.jsPDF || (globalObj.jspdf && globalObj.jspdf));
+    if (!jsPDFCtor) {
         throw new Error('jsPDF library not loaded. Please include: https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
     }
 
     const agg = await fetchTrendsDataForMonth(year, monthIndex);
     const stats = calculateStats(agg);
 
-    const { jsPDF } = window;
-    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    // jsPDFCtor may be the namespace (with jsPDF property) or the constructor itself. Normalize to constructor.
+    const jsPDFClass = jsPDFCtor.jsPDF ? jsPDFCtor.jsPDF : jsPDFCtor;
+    const pdf = new jsPDFClass({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
     const monthNames = ["January", "February", "March", "April", "May", "June",
         "July", "August", "September", "October", "November", "December"];
