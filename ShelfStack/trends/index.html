@@ -113,6 +113,26 @@
             font-size: 0.78em;
         }
         .view-month[hidden] { display: none; }
+        .export-btn {
+            margin-left: auto;
+            padding: 0.45em 1em;
+            font-size: 0.78em;
+            font-weight: 600;
+            background: rgba(124,92,252,0.2);
+            border: 1px solid var(--accent);
+            color: var(--accent-text);
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: background 0.2s ease, transform 0.15s ease;
+        }
+        .export-btn:hover:not(:disabled) {
+            background: rgba(124,92,252,0.3);
+            transform: translateY(-1px);
+        }
+        .export-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
         .streak-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
@@ -404,6 +424,11 @@
             .completed-list__title { font-size: 0.74em; }
             .completed-list__meta,
             .completed-list__date { font-size: 0.62em; }
+            .export-btn {
+                margin-left: 0;
+                margin-top: 0.5em;
+                width: 100%;
+            }
         }
         @media (max-width: 1120px) {
             .year-grid { grid-template-columns: 1fr; }
@@ -420,6 +445,9 @@
             <button type="button" class="view-toggle__btn active" id="period-month-btn">Month</button>
         </div>
         <select id="month-select" class="view-month"></select>
+        <button type="button" class="export-btn" id="export-pdf-btn" title="Export current month as PDF">
+            📥 Export PDF
+        </button>
     </div>
     <div class="trends-grid" id="trends-grid" style="display:none;">
 
@@ -516,10 +544,13 @@
 
     </div>
 </div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script type="module">
     import * as Plot from "https://cdn.jsdelivr.net/npm/@observablehq/plot@0.6/+esm";
     import { initToolbar } from "../js/toolbar.js";
     import { supabase } from "../js/supabase-client.js";
+    import { generateTrendsPDF } from "../js/services/pdf-export-service.js";
+    import { showToast } from "../js/toast.js";
 
     initToolbar();
 
@@ -562,6 +593,7 @@
     const monthSelectEl = document.getElementById("month-select");
     const periodYearBtn = document.getElementById("period-year-btn");
     const periodMonthBtn = document.getElementById("period-month-btn");
+    const exportPdfBtn = document.getElementById("export-pdf-btn");
     const scopePieLabelEl = document.getElementById("scope-pie-label");
     const scopeGlanceLabelEl = document.getElementById("scope-glance-label");
     const unitsTableHeadingEl = document.getElementById("units-table-heading");
@@ -595,6 +627,20 @@
 
     monthlyCompletedListBodyEl.classList.add("collapsed");
     monthlyCompletedListLabelEl.classList.add("collapsed");
+
+    // Export PDF button handler
+    exportPdfBtn.addEventListener("click", async () => {
+        exportPdfBtn.disabled = true;
+        try {
+            await generateTrendsPDF(year, viewState.monthIndex);
+            showToast(`PDF exported for ${fullMonthNames[viewState.monthIndex]}`, 'success');
+        } catch (error) {
+            console.error('PDF export failed:', error);
+            showToast(`Failed to export PDF: ${error.message}`, 'error');
+        } finally {
+            exportPdfBtn.disabled = false;
+        }
+    });
 
     function monthNames() {
         return ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -758,6 +804,7 @@
             unitsChartLabelEl.textContent = "Units Per Month";
             completedChartLabelEl.textContent = "Completed Per Month";
             cumulativeChartLabelEl.textContent = `Cumulative Units — ${year}`;
+            exportPdfBtn.disabled = true;
             return;
         }
         const monthName = fullMonthNames[viewState.monthIndex];
@@ -766,6 +813,7 @@
         unitsTableHeadingEl.textContent = "Units Per Day";
         unitsChartLabelEl.textContent = "Units Per Day";
         cumulativeChartLabelEl.textContent = `Cumulative Units — ${monthName}`;
+        exportPdfBtn.disabled = false;
     }
 
     function makeLineChart(targetId, rows, tickFormat) {
@@ -1006,27 +1054,22 @@
 
         renderPiePair(scopedTotalsCompleted, scopedTotalsUnits);
 
-        // Render completed list
-        if (monthlyCompletedListLabelEl) {
-            monthlyCompletedListLabelEl.textContent = `${fullMonthNames[selectedMonth]} Completed Media`;
-        }
-        if (monthlyCompletedListEl) {
-            const items = agg.completedItemsByMonth[selectedMonth] || [];
-            monthlyCompletedListEl.innerHTML = items.length
-                ? items.map(item => `
-                    <li>
-                        ${item.coverArtUrl
-                            ? `<img class="completed-list__cover" src="${item.coverArtUrl}" alt="${item.title} cover">`
-                            : `<div class="completed-list__cover completed-list__cover--placeholder">No Art</div>`
-                        }
-                        <div class="completed-list__left">
-                            <div class="completed-list__title">${item.title}</div>
-                            <div class="completed-list__meta">${labels[item.mediaType]}</div>
-                            <div class="completed-list__date">${new Date(item.date).toLocaleDateString()}</div>
-                        </div>
-                    </li>
-                `).join("")
-                : `<li><div class="completed-list__left"><div class="completed-list__meta">No completed media for this month.</div></div></li>`;
+        // Populate completed list for month view
+        const monthCompletedItems = agg.completedItemsByMonth[selectedMonth] || [];
+        if (monthCompletedItems.length > 0) {
+            monthlyCompletedListEl.innerHTML = monthCompletedItems.map(item => `
+                <li>
+                    ${item.coverArtUrl
+                        ? `<img src="${item.coverArtUrl}" alt="${item.title}" class="completed-list__cover">`
+                        : `<div class="completed-list__cover completed-list__cover--placeholder">${labels[item.mediaType]}</div>`
+                    }
+                    <div class="completed-list__left">
+                        <div class="completed-list__title">${item.title}</div>
+                        <div class="completed-list__meta">${labels[item.mediaType]}</div>
+                        <div class="completed-list__date">${new Date(item.date).toLocaleDateString()}</div>
+                    </div>
+                </li>
+            `).join("");
         }
 
         requestAnimationFrame(() => {
