@@ -40,7 +40,8 @@ export function renderStreakBar(streaks) {
         manga_streak_count:  'manga-count',
         anime_streak_count:  'anime-count',
         tvshow_streak_count: 'tv-count',
-        movie_streak_count:  'movie-count'
+        movie_streak_count:  'movie-count',
+        concert_streak_count: 'concert-count'
     };
 
     Object.entries(streakElements).forEach(([key, elementId]) => {
