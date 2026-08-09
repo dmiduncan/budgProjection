@@ -3,20 +3,22 @@
 
 import { supabase } from '../supabase-client.js';
 
-const mediaTypes = ["book", "manga", "anime", "tvshow", "movie"];
+const mediaTypes = ["book", "manga", "anime", "tvshow", "movie", "concert"];
 const labels = {
     book: "Books",
     manga: "Manga",
     anime: "Anime",
     tvshow: "TV Shows",
-    movie: "Movies"
+    movie: "Movies",
+    concert: "Concerts"
 };
 const colors = {
     book: "#f5c842",
     manga: "#7aaee8",
     anime: "#c084fc",
     tvshow: "#22d3ee",
-    movie: "#a0a0a0"
+    movie: "#a0a0a0",
+    concert: "#ff7fbf"
 };
 
 function normalizeType(rawType) {
@@ -24,6 +26,7 @@ function normalizeType(rawType) {
     if (t === "tv show" || t === "tvshow" || t === "tv_shows" || t === "tv shows") return "tvshow";
     if (t === "books") return "book";
     if (t === "movies") return "movie";
+    if (t === "concerts") return "concert";
     return mediaTypes.includes(t) ? t : null;
 }
 

@@ -42,6 +42,7 @@ Guidance for Copilot sessions
 - Focus on small, surgical changes; preserve script load order and the supabase-client contract.
 - When proposing refactors that affect multiple apps, include a cross-app migration plan (update each supabase-client copy, update index.html script order, run manual smoke tests in browser).
 - For UI changes, open the relevant index.html in a browser while iterating; live reload is not provided here but a static server makes iterations fast.
+- Never perform git commits or push changes to the remote repository without explicit, documented approval from the repository owner. For any change that modifies tracked files, present a clear diff and await approval before staging/committing/pushing.
 
 Where to start when exploring
 - Open `BudgProjection/index.html` and its `js/` folder for the budgeting app flow.

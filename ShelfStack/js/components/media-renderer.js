@@ -9,7 +9,8 @@ export function getUnitLabel(mediaType) {
         'manga':    'chapters',
         'tv show':  'episodes',
         'anime':    'episodes',
-        'movie':    'minutes'
+        'movie':    'minutes',
+        'concert':  'attended'
     };
     return map[(mediaType || '').toLowerCase().trim()] || 'units';
 }
@@ -20,7 +21,8 @@ export function getSeriesLabel(mediaType) {
         'manga':    'volumes',
         'tv show':  'seasons',
         'anime':    'seasons',
-        'movie':    'movies'
+        'movie':    'movies',
+        'concert':  'concerts'
     };
     return map[(mediaType || '').toLowerCase().trim()] || 'units';
 }
