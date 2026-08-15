@@ -1,4 +1,4 @@
-// js/services/transaction-service.js
+// js/services/transaction-service.js.
 // All Supabase calls related to transactions and expenses.
 // Every function returns { data, error } — never touches the DOM.
 
