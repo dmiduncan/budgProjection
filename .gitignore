@@ -1,2 +1,5 @@
 PLANS/
 .DS_Store
+
+# Local Supabase keys (do not commit)
+shared/supabase-keys.js

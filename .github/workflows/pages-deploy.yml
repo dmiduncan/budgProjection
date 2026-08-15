@@ -1,0 +1,41 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create supabase keys
+        env:
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        run: |
+          mkdir -p shared
+          cat > shared/supabase-keys.js <<'EOF'
+          window.SUPABASE_URL = '${SUPABASE_URL}';
+          window.SUPABASE_KEY = '${SUPABASE_PUBLISHABLE_KEY}';
+          EOF
+
+      # If you have a build step (npm, hugo, etc.), run it here and set `path` below to the build output
+      # - name: Build site
+      #   run: npm run build
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v1
+        with:
+          path: ./
+
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v1
