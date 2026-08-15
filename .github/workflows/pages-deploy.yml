@@ -12,6 +12,9 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
       - name: Checkout
@@ -23,7 +26,7 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
         run: |
           mkdir -p shared
-          cat > shared/supabase-keys.js <<'EOF'
+          cat > shared/supabase-keys.js <<EOF
           window.SUPABASE_URL = '${SUPABASE_URL}';
           window.SUPABASE_KEY = '${SUPABASE_PUBLISHABLE_KEY}';
           EOF
@@ -33,9 +36,10 @@ jobs:
       #   run: npm run build
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v4
+        uses: actions/upload-pages-artifact@v3
         with:
           path: ./
 
       - name: Deploy to GitHub Pages
+        id: deployment
         uses: actions/deploy-pages@v4
