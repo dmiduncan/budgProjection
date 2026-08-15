@@ -20,16 +20,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Create supabase keys
+      - name: Inject Supabase keys
         env:
           SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
         run: |
+          set -euo pipefail
           mkdir -p shared
           cat > shared/supabase-keys.js <<EOF
-          window.SUPABASE_URL = '${SUPABASE_URL}';
-          window.SUPABASE_KEY = '${SUPABASE_PUBLISHABLE_KEY}';
-          EOF
+window.SUPABASE_URL='${SUPABASE_URL}'
+window.SUPABASE_KEY='${SUPABASE_PUBLISHABLE_KEY}'
+EOF
 
       # If you have a build step (npm, hugo, etc.), run it here and set `path` below to the build output
       # - name: Build site
