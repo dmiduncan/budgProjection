@@ -5,7 +5,7 @@
 //   - 'userSignedIn'  { detail: { user: { id, email } } }
 //   - 'userSignedOut'
 
-import { supabase } from './supabase-client.js';
+import { supabase } from '../../shared/js/supabase-client.js';
 import { setState, clearUserState } from './app-state.js';
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────

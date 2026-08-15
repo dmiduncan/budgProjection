@@ -2,7 +2,7 @@
 // All Supabase calls related to transactions and expenses.
 // Every function returns { data, error } — never touches the DOM.
 
-import { supabase } from '../supabase-client.js';
+import { supabase } from '../../../shared/js/supabase-client.js';
 
 /**
  * Fetch all transactions ordered by priority.
