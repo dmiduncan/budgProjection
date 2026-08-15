@@ -1,7 +1,7 @@
 // ShelfStack/js/services/pdf-export-service.js
 // Generates comprehensive PDF report of trends data with charts, statistics, and completed media list.
 
-import { supabase } from '../supabase-client.js';
+import { supabase } from '../../../shared/js/supabase-client.js';
 
 const mediaTypes = ["book", "manga", "anime", "tvshow", "movie", "concert"];
 const labels = {

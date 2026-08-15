@@ -1,7 +1,7 @@
 // js/services/streak-service.js
 // Streak data fetching and DOM updates.
 
-import { supabase } from '../supabase-client.js';
+import { supabase } from '../../../shared/js/supabase-client.js';
 
 /**
  * Fetch streak data for the current user.

@@ -521,10 +521,11 @@
 
     </div>
 </div>
+<script src="../../shared/config.local.js"></script>
 <script type="module">
     import * as Plot from "https://cdn.jsdelivr.net/npm/@observablehq/plot@0.6/+esm";
     import { initToolbar } from "../js/toolbar.js";
-    import { supabase } from "../js/supabase-client.js";
+    import { supabase } from "../../shared/js/supabase-client.js";
 
     initToolbar();
 

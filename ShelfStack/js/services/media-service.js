@@ -2,7 +2,7 @@
 // All Supabase calls related to media data.
 // Every function returns { data, error } — never touches the DOM or calls alert().
 
-import { supabase } from '../supabase-client.js';
+import { supabase } from '../../../shared/js/supabase-client.js';
 
 const MediaStatus = {
     IN_PROGRESS: 'in progress',
