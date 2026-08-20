@@ -143,15 +143,64 @@ function init() {
         runSearch(selectedTitle);
     });
 
-    // Search button
-    document.getElementById('search-btn')?.addEventListener('click', () => {
-        const term = document.getElementById('search-input')?.value?.trim();
+    // Enhanced search button: toggle between magnifier and clear (X)
+    const searchBtn = document.getElementById('search-btn');
+    const searchInputEl = document.getElementById('search-input');
+
+    const MAG_SVG = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+             fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>`;
+
+    const X_SVG = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+             fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>`;
+
+    function updateSearchButton() {
+        if (!searchBtn || !searchInputEl) return;
+        const hasText = searchInputEl.value?.trim().length > 0;
+        if (hasText) {
+            searchBtn.innerHTML = X_SVG;
+            searchBtn.title = 'Clear search';
+            searchBtn.setAttribute('aria-label', 'Clear search');
+        } else {
+            searchBtn.innerHTML = MAG_SVG;
+            searchBtn.title = 'Search';
+            searchBtn.setAttribute('aria-label', 'Search');
+        }
+    }
+
+    // Initialize button state
+    updateSearchButton();
+
+    // Update on input changes
+    searchInputEl?.addEventListener('input', () => {
+        updateSearchButton();
+        // hide dropdown when input cleared
+        if (searchInputEl.value.trim().length === 0) dropdown?.classList.remove('active');
+    });
+
+    // Click behavior: clear when input has text, otherwise perform search
+    searchBtn?.addEventListener('click', () => {
+        const term = searchInputEl?.value?.trim();
+        if (term && term.length > 0) {
+            searchInputEl.value = '';
+            dropdown?.classList.remove('active');
+            updateSearchButton();
+            searchInputEl.focus();
+            return;
+        }
         dropdown?.classList.remove('active');
         runSearch(term);
     });
 
-    // Enter key in search input
-    document.getElementById('search-input')?.addEventListener('keypress', (e) => {
+    // Enter key in search input (preserve behavior)
+    searchInputEl?.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
             dropdown?.classList.remove('active');
             runSearch(e.target.value.trim());
