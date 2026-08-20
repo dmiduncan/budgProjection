@@ -16,6 +16,14 @@
             align-items: center;
             margin-bottom: 2em;
             flex-wrap: wrap;
+            /* Stick to top when scrolling so tracked items sweep under it */
+            position: sticky;
+            /* sit below the top toolbar (52px) */
+            top: 52px;
+            z-index: 30;
+            background: linear-gradient(var(--surface), var(--surface));
+            padding-top: 0.6em;
+            padding-bottom: 0.6em;
         }
 
         .search-input-wrapper {
