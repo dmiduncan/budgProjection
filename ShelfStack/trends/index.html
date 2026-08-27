@@ -113,74 +113,15 @@
             font-size: 0.78em;
         }
         .view-month[hidden] { display: none; }
-        .streak-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-            gap: 0.7em;
-        }
-        .streak-pill {
+        .view-year {
             border: 1px solid var(--border);
-            border-radius: var(--radius);
-            padding: 0.6em 0.7em;
             background: var(--surface-2);
+            color: var(--text-muted);
+            border-radius: var(--radius);
+            padding: 0.35em 0.55em;
+            font-size: 0.78em;
         }
-        .streak-pill__name { font-size: 0.78em; color: var(--text-muted); }
-        .streak-pill__count {
-            font-family: var(--font-display);
-            font-size: 1.05em;
-            color: var(--accent-text);
-            margin-top: 0.1em;
-        }
-        .streak-pill__date { font-size: 0.72em; color: var(--text-faint); margin-top: 0.25em; }
-        .streak-bar {
-            display: flex;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 0.15em;
-            margin-bottom: 0.75em;
-            overflow-x: hidden;
-        }
-        .streak-bar::-webkit-scrollbar { display: none; }
-        .streak-item {
-            display: flex;
-            align-items: center;
-            gap: 0.3em;
-            padding: 0.2em 0.5em;
-            cursor: default;
-            white-space: nowrap;
-            flex-shrink: 0;
-        }
-        .streak-item + .streak-item { border-left: 1px solid var(--border); }
-        .streak-icon {
-            font-family: var(--font-display);
-            font-size: 0.6em;
-            font-weight: 600;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-            line-height: 1;
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        .streak-item:has(#book-count)  .streak-icon { background-image: linear-gradient(135deg, #f5c842, #e8853d); }
-        .streak-item:has(#manga-count) .streak-icon { background-image: linear-gradient(135deg, #c8d8f0, #7aaee8); }
-        .streak-item:has(#anime-count) .streak-icon { background-image: linear-gradient(135deg, #f9a8d4, #c084fc); }
-        .streak-item:has(#tv-count)    .streak-icon { background-image: linear-gradient(135deg, #5eead4, #22d3ee); }
-        .streak-item:has(#movie-count) .streak-icon { background-image: linear-gradient(135deg, #e2e2e2, #a0a0a0); }
-        .streak-item:has(#concert-count) .streak-icon { background-image: linear-gradient(135deg, #ff7fbf, #ffb86b); }
-        .streak-count {
-            font-size: 0.65em;
-            font-weight: 600;
-            color: var(--accent-text);
-        }
-        @media (max-width: 640px) {
-            .streak-item {
-                padding: 0.15em 0.4em;
-                gap: 0.22em;
-            }
-            .streak-icon { font-size: 0.56em; }
-            .streak-count { font-size: 0.6em; }
-        }
+        .view-year[hidden] { display: none; }
         .year-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -420,40 +361,10 @@
             <button type="button" class="view-toggle__btn" id="period-year-btn">Year</button>
             <button type="button" class="view-toggle__btn active" id="period-month-btn">Month</button>
         </div>
+        <select id="year-select" class="view-year" hidden></select>
         <select id="month-select" class="view-month"></select>
     </div>
     <div class="trends-grid" id="trends-grid" style="display:none;">
-
-        <!-- Active Streaks: hidden in month view -->
-        <div class="card" id="card-streaks">
-            <div class="card__label">Active Streaks</div>
-            <div class="streak-bar" id="streaks-container">
-                <div class="streak-item">
-                    <span class="streak-icon">Books</span>
-                    <span class="streak-count" id="book-count">0</span>
-                </div>
-                <div class="streak-item">
-                    <span class="streak-icon">Manga</span>
-                    <span class="streak-count" id="manga-count">0</span>
-                </div>
-                <div class="streak-item">
-                    <span class="streak-icon">Anime</span>
-                    <span class="streak-count" id="anime-count">0</span>
-                </div>
-                <div class="streak-item">
-                    <span class="streak-icon">TV Shows</span>
-                    <span class="streak-count" id="tv-count">0</span>
-                </div>
-                <div class="streak-item">
-                    <span class="streak-icon">Films</span>
-                    <span class="streak-count" id="movie-count">0</span>
-                </div>
-                <div class="streak-item">
-                    <span class="streak-icon">Concerts</span>
-                    <span class="streak-count" id="concert-count">0</span>
-                </div>
-            </div>
-        </div>
 
         <!-- Month-only: Completed list at the top, collapsible -->
         <div class="card full-span" id="card-monthly-completed-list" hidden>
@@ -498,6 +409,12 @@
             <div class="plot-wrap" id="chart-completed"></div>
         </div>
 
+        <!-- Cumulative completed trend chart (Year only) -->
+        <div class="card full-span" id="card-cumulative-completed-trend">
+            <div class="card__label" id="cumulative-completed-chart-label">Cumulative Completed Per Month</div>
+            <div class="plot-wrap" id="chart-cumulative-completed"></div>
+        </div>
+
         <!-- At A Glance -->
         <div class="card full-span">
             <div class="card__label" id="scope-glance-label">Year At A Glance</div>
@@ -530,11 +447,10 @@
     initToolbar();
 
     const now = new Date();
-    const year = now.getFullYear();
+    const currentYear = now.getFullYear();
     const currentMonthIndex = now.getMonth();
-    const startIso = `${year}-01-01T00:00:00.000Z`;
-    const endIso = `${year + 1}-01-01T00:00:00.000Z`;
     const mediaTypes = ["book", "manga", "anime", "tvshow", "movie", "concert"];
+    const unitChartMediaTypes = mediaTypes.filter(type => type !== "concert");
     const labels = {
         book: "Books",
         manga: "Manga",
@@ -568,6 +484,7 @@
     const statusEl = document.getElementById("status-text");
     const viewControlsEl = document.getElementById("view-controls");
     const trendsGrid = document.getElementById("trends-grid");
+    const yearSelectEl = document.getElementById("year-select");
     const monthSelectEl = document.getElementById("month-select");
     const periodYearBtn = document.getElementById("period-year-btn");
     const periodMonthBtn = document.getElementById("period-month-btn");
@@ -580,11 +497,12 @@
     const glanceCompletedBlock = document.getElementById("glance-completed-block");
     const cardCompletedTrend = document.getElementById("card-completed-trend");
     const chartCompletedEl = document.getElementById("chart-completed");
+    const cardCumulativeCompletedTrendEl = document.getElementById("card-cumulative-completed-trend");
+    const chartCumulativeCompletedEl = document.getElementById("chart-cumulative-completed");
     const monthlyCompletedListCardEl = document.getElementById("card-monthly-completed-list");
     const monthlyCompletedListLabelEl = document.getElementById("monthly-completed-list-label");
     const monthlyCompletedListBodyEl = document.getElementById("monthly-completed-list-body");
     const monthlyCompletedListEl = document.getElementById("monthly-completed-list");
-    const cardStreaksEl = document.getElementById("card-streaks");
     const cardCumulativeUnitsEl = document.getElementById("card-cumulative-units");
     const cumulativeChartLabelEl = document.getElementById("cumulative-chart-label");
 
@@ -593,7 +511,8 @@
     // Default to month view
     const viewState = {
         period: "month",
-        monthIndex: currentMonthIndex
+        monthIndex: currentMonthIndex,
+        year: currentYear
     };
 
     // Collapsible toggle
@@ -668,22 +587,6 @@
         wrap.append(table);
         container.innerHTML = "";
         container.append(wrap);
-    }
-
-    function renderStreaks(streakRow) {
-        if (!streakRow) return;
-        const streakMap = [
-            { countId: "book-count", key: "book_streak_count" },
-            { countId: "manga-count", key: "manga_streak_count" },
-            { countId: "anime-count", key: "anime_streak_count" },
-            { countId: "tv-count", key: "tvshow_streak_count" },
-            { countId: "movie-count", key: "movie_streak_count" },
-            { countId: "concert-count", key: "concert_streak_count" }
-        ];
-        streakMap.forEach(({ countId, key }) => {
-            const el = document.getElementById(countId);
-            if (el) el.textContent = Number(streakRow[key] || 0);
-        });
     }
 
     function chartWidthFor(target) {
@@ -762,24 +665,24 @@
 
     function renderScopeLabels() {
         if (viewState.period === "year") {
-            scopePieLabelEl.textContent = "Current Year";
-            scopeGlanceLabelEl.textContent = "Year At A Glance";
+            scopePieLabelEl.textContent = String(viewState.year);
+            scopeGlanceLabelEl.textContent = `${viewState.year} At A Glance`;
             unitsTableHeadingEl.textContent = "Units Per Month";
             completedTableHeadingEl.textContent = "Completed Per Month";
             unitsChartLabelEl.textContent = "Units Per Month";
             completedChartLabelEl.textContent = "Completed Per Month";
-            cumulativeChartLabelEl.textContent = `Cumulative Units — ${year}`;
+            cumulativeChartLabelEl.textContent = `Cumulative Units — ${viewState.year}`;
             return;
         }
         const monthName = fullMonthNames[viewState.monthIndex];
-        scopePieLabelEl.textContent = `${monthName} ${year}`;
+        scopePieLabelEl.textContent = `${monthName} ${viewState.year}`;
         scopeGlanceLabelEl.textContent = `${monthName} At A Glance`;
         unitsTableHeadingEl.textContent = "Units Per Day";
         unitsChartLabelEl.textContent = "Units Per Day";
         cumulativeChartLabelEl.textContent = `Cumulative Units — ${monthName}`;
     }
 
-    function makeLineChart(targetId, rows, tickFormat) {
+    function makeLineChart(targetId, rows, tickFormat, chartMediaTypes = mediaTypes) {
         const target = document.getElementById(targetId);
         const width = chartWidthFor(target);
         const narrow = width < 520;
@@ -801,8 +704,8 @@
             y: { label: null, grid: true },
             color: {
                 legend: true,
-                domain: mediaTypes.map(t => legendLabels[t]),
-                range: mediaTypes.map(t => colors[t])
+                domain: chartMediaTypes.map(t => legendLabels[t]),
+                range: chartMediaTypes.map(t => colors[t])
             },
             marks: [
                 Plot.lineY(data, {
@@ -823,7 +726,7 @@
         target.append(chart);
     }
 
-    function buildAggregates(completedRows, journalRows) {
+    function buildAggregates(targetYear, completedRows, journalRows) {
         const totalsCompleted = emptyByType();
         const totalsUnits = emptyByType();
         const unitsByMonth = {};
@@ -835,8 +738,8 @@
         mediaTypes.forEach(type => {
             unitsByMonth[type] = Array(12).fill(0);
             completedByMonth[type] = Array(12).fill(0);
-            unitsByDay[type] = Array.from({ length: 12 }, (_, monthIndex) => Array(daysInMonth(year, monthIndex)).fill(0));
-            completedByDay[type] = Array.from({ length: 12 }, (_, monthIndex) => Array(daysInMonth(year, monthIndex)).fill(0));
+            unitsByDay[type] = Array.from({ length: 12 }, (_, monthIndex) => Array(daysInMonth(targetYear, monthIndex)).fill(0));
+            completedByDay[type] = Array.from({ length: 12 }, (_, monthIndex) => Array(daysInMonth(targetYear, monthIndex)).fill(0));
         });
 
         for (const row of completedRows) {
@@ -844,6 +747,7 @@
             if (!mediaType || !row.date_finished) continue;
             // date finished isn't stored in timestampz and we force Z on for parsing.
             const d = new Date(row.date_finished.endsWith("Z") ? row.date_finished : row.date_finished + "Z");
+            if (d.getFullYear() !== targetYear) continue;
             const monthIndex = d.getMonth();
             const dayIndex = d.getDate() - 1;
             totalsCompleted[mediaType] += 1;
@@ -864,6 +768,7 @@
             if (!mediaType) continue;
             const units = Number(row.units || 0);
             const d = new Date(row.date_created);
+            if (d.getFullYear() !== targetYear) continue;
             const monthIndex = d.getMonth();
             const dayIndex = d.getDate() - 1;
             totalsUnits[mediaType] += units;
@@ -885,13 +790,12 @@
 
         const isMonthView = viewState.period === "month";
 
-        // Show/hide streaks card (year only)
-        if (cardStreaksEl) cardStreaksEl.hidden = isMonthView;
-
         // Show/hide completed trend chart and table (year only)
         if (glanceCompletedBlock) glanceCompletedBlock.hidden = isMonthView;
         if (cardCompletedTrend) cardCompletedTrend.hidden = isMonthView;
+        if (cardCumulativeCompletedTrendEl) cardCumulativeCompletedTrendEl.hidden = isMonthView;
         if (isMonthView && chartCompletedEl) chartCompletedEl.innerHTML = "";
+        if (isMonthView && chartCumulativeCompletedEl) chartCumulativeCompletedEl.innerHTML = "";
 
         // Cumulative chart always visible in both views
         if (cardCumulativeUnitsEl) cardCumulativeUnitsEl.hidden = false;
@@ -906,19 +810,19 @@
         if (viewState.period === "year") {
             scopedTotalsCompleted = agg.totalsCompleted;
             scopedTotalsUnits = agg.totalsUnits;
-            avgDivisor = (now.getFullYear() === year)
-                ? Math.max(1, Math.floor((Date.UTC(now.getUTCFullYear(), now.getMonth(), now.getDate()) - Date.UTC(year, 0, 1)) / 86400000) + 1)
-                : 365;
+            avgDivisor = (now.getFullYear() === viewState.year)
+                ? Math.max(1, Math.floor((Date.UTC(now.getUTCFullYear(), now.getMonth(), now.getDate()) - Date.UTC(viewState.year, 0, 1)) / 86400000) + 1)
+                : (daysInMonth(viewState.year, 1) === 29 ? 366 : 365);
         } else {
             const monthIndex = viewState.monthIndex;
             mediaTypes.forEach(type => {
                 scopedTotalsCompleted[type] = agg.completedByMonth[type][monthIndex];
                 scopedTotalsUnits[type] = agg.unitsByMonth[type][monthIndex];
             });
-            if (now.getFullYear() === year && now.getMonth() === monthIndex) {
+            if (now.getFullYear() === viewState.year && now.getMonth() === monthIndex) {
                 avgDivisor = Math.max(1, now.getDate());
             } else {
-                avgDivisor = daysInMonth(year, monthIndex);
+                avgDivisor = daysInMonth(viewState.year, monthIndex);
             }
         }
 
@@ -937,7 +841,7 @@
             renderMatrixTable("year-completed-by-month", "", months, agg.completedByMonth);
         } else {
             const m = viewState.monthIndex;
-            const dayRows = Array.from({ length: daysInMonth(year, m) }, (_, i) => String(i + 1));
+            const dayRows = Array.from({ length: daysInMonth(viewState.year, m) }, (_, i) => String(i + 1));
             const unitsByDaySlice = {};
             mediaTypes.forEach(type => {
                 unitsByDaySlice[type] = agg.unitsByDay[type][m];
@@ -947,42 +851,58 @@
 
         const unitsChartRows = [];
         const completedChartRows = [];
+        const cumulativeCompletedChartRows = [];
         const cumulativeChartRows = [];
 
         if (viewState.period === "year") {
             months.forEach((_, monthIndex) => {
-                mediaTypes.forEach(type => {
+                unitChartMediaTypes.forEach(type => {
                     unitsChartRows.push({
-                        xDate: new Date(Date.UTC(year, monthIndex, 1)),
+                        xDate: new Date(Date.UTC(viewState.year, monthIndex, 1)),
                         mediaTypeLegendLabel: legendLabels[type],
                         value: agg.unitsByMonth[type][monthIndex]
                     });
+                });
+                mediaTypes.forEach(type => {
                     completedChartRows.push({
-                        xDate: new Date(Date.UTC(year, monthIndex, 1)),
+                        xDate: new Date(Date.UTC(viewState.year, monthIndex, 1)),
                         mediaTypeLegendLabel: legendLabels[type],
                         value: agg.completedByMonth[type][monthIndex]
                     });
                 });
             });
 
-            // Build cumulative units by month for the year — running total per media type
-            mediaTypes.forEach(type => {
-                let runningTotal = 0;
+            // Build cumulative values by month for the year.
+            unitChartMediaTypes.forEach(type => {
+                let runningUnits = 0;
                 months.forEach((_, monthIndex) => {
-                    runningTotal += agg.unitsByMonth[type][monthIndex];
+                    runningUnits += agg.unitsByMonth[type][monthIndex];
                     cumulativeChartRows.push({
-                        xDate: new Date(Date.UTC(year, monthIndex, 1)),
+                        xDate: new Date(Date.UTC(viewState.year, monthIndex, 1)),
                         mediaTypeLegendLabel: legendLabels[type],
-                        value: runningTotal
+                        value: runningUnits
+                    });
+                });
+            });
+
+            mediaTypes.forEach(type => {
+                let runningCompleted = 0;
+                months.forEach((_, monthIndex) => {
+                    runningCompleted += agg.completedByMonth[type][monthIndex];
+                    cumulativeCompletedChartRows.push({
+                        xDate: new Date(Date.UTC(viewState.year, monthIndex, 1)),
+                        mediaTypeLegendLabel: legendLabels[type],
+                        value: runningCompleted
                     });
                 });
             });
 
             renderPiePair(scopedTotalsCompleted, scopedTotalsUnits);
             requestAnimationFrame(() => {
-                makeLineChart("chart-units", unitsChartRows, "%b");
+                makeLineChart("chart-units", unitsChartRows, "%b", unitChartMediaTypes);
                 makeLineChart("chart-completed", completedChartRows, "%b");
-                makeLineChart("chart-cumulative-units", cumulativeChartRows, "%b");
+                makeLineChart("chart-cumulative-completed", cumulativeCompletedChartRows, "%b");
+                makeLineChart("chart-cumulative-units", cumulativeChartRows, "%b", unitChartMediaTypes);
             });
 
             return;
@@ -990,12 +910,12 @@
 
         // Month view
         const selectedMonth = viewState.monthIndex;
-        const totalDays = daysInMonth(year, selectedMonth);
+        const totalDays = daysInMonth(viewState.year, selectedMonth);
 
         for (let day = 1; day <= totalDays; day += 1) {
-            mediaTypes.forEach(type => {
+            unitChartMediaTypes.forEach(type => {
                 unitsChartRows.push({
-                    xDate: new Date(Date.UTC(year, selectedMonth, day)),
+                    xDate: new Date(Date.UTC(viewState.year, selectedMonth, day)),
                     mediaTypeLegendLabel: legendLabels[type],
                     value: agg.unitsByDay[type][selectedMonth][day - 1]
                 });
@@ -1003,12 +923,12 @@
         }
 
         // Build cumulative chart rows for month view
-        mediaTypes.forEach(type => {
+        unitChartMediaTypes.forEach(type => {
             let runningTotal = 0;
             for (let day = 1; day <= totalDays; day += 1) {
                 runningTotal += agg.unitsByDay[type][selectedMonth][day - 1];
                 cumulativeChartRows.push({
-                    xDate: new Date(Date.UTC(year, selectedMonth, day)),
+                    xDate: new Date(Date.UTC(viewState.year, selectedMonth, day)),
                     mediaTypeLegendLabel: legendLabels[type],
                     value: runningTotal
                 });
@@ -1041,12 +961,15 @@
         }
 
         requestAnimationFrame(() => {
-            makeLineChart("chart-units", unitsChartRows, "%-d");
-            makeLineChart("chart-cumulative-units", cumulativeChartRows, "%-d");
+            makeLineChart("chart-units", unitsChartRows, "%-d", unitChartMediaTypes);
+            makeLineChart("chart-cumulative-units", cumulativeChartRows, "%-d", unitChartMediaTypes);
         });
     }
 
-    function setupViewControls(agg) {
+    function setupViewControls(years, getAggregates) {
+        yearSelectEl.innerHTML = years
+            .map(targetYear => `<option value="${targetYear}" ${targetYear === viewState.year ? "selected" : ""}>${targetYear}</option>`)
+            .join("");
         monthSelectEl.innerHTML = months
             .map((name, index) => `<option value="${index}" ${index === currentMonthIndex ? "selected" : ""}>${name}</option>`)
             .join("");
@@ -1055,24 +978,30 @@
             const monthMode = viewState.period === "month";
             periodYearBtn.classList.toggle("active", !monthMode);
             periodMonthBtn.classList.toggle("active", monthMode);
+            yearSelectEl.hidden = monthMode;
             monthSelectEl.hidden = !monthMode;
         }
 
         periodYearBtn.addEventListener("click", () => {
             viewState.period = "year";
             syncControls();
-            renderView(agg);
+            renderView(getAggregates());
         });
 
         periodMonthBtn.addEventListener("click", () => {
             viewState.period = "month";
             syncControls();
-            renderView(agg);
+            renderView(getAggregates());
         });
 
         monthSelectEl.addEventListener("change", (event) => {
             viewState.monthIndex = Number(event.target.value || 0);
-            renderView(agg);
+            renderView(getAggregates());
+        });
+
+        yearSelectEl.addEventListener("change", (event) => {
+            viewState.year = Number(event.target.value);
+            renderView(getAggregates());
         });
 
         syncControls();
@@ -1085,39 +1014,40 @@
             return;
         }
 
-        const [streakRes, completedRes, journalRes] = await Promise.all([
-            supabase.from("lu_user_streak").select("*").eq("user_id", user.id).maybeSingle(),
+        const [completedRes, journalRes] = await Promise.all([
             supabase
                 .from("lu_media_status")
                 .select("media_id,date_finished,status,lu_media(media_type,title,cover_art_url)")
                 .eq("user_id", user.id)
-                .eq("status", "completed")
-                .gte("date_finished", startIso)
-                .lt("date_finished", endIso),
+                .eq("status", "completed"),
             supabase
                 .from("lu_journal_entry")
                 .select("units,date_created,lu_media_status!inner(user_id,media_id,lu_media!inner(media_type))")
                 .eq("lu_media_status.user_id", user.id)
-                .gte("date_created", startIso)
-                .lt("date_created", endIso)
         ]);
 
-        if (streakRes.error || completedRes.error || journalRes.error) {
+        if (completedRes.error || journalRes.error) {
             statusEl.textContent = "Could not load trends right now.";
             return;
         }
 
-        renderStreaks(streakRes.data);
-
         const completedRows = completedRes.data || [];
         const journalRows = journalRes.data || [];
-        const agg = buildAggregates(completedRows, journalRows);
+        const years = new Set([currentYear]);
+        completedRows.forEach(row => {
+            if (row.date_finished) years.add(new Date(row.date_finished.endsWith("Z") ? row.date_finished : row.date_finished + "Z").getFullYear());
+        });
+        journalRows.forEach(row => {
+            if (row.date_created) years.add(new Date(row.date_created).getFullYear());
+        });
+        const availableYears = [...years].sort((a, b) => b - a);
+        const getAggregates = () => buildAggregates(viewState.year, completedRows, journalRows);
 
         statusEl.style.display = "none";
         viewControlsEl.style.display = "flex";
         trendsGrid.style.display = "grid";
-        setupViewControls(agg);
-        renderView(agg);
+        setupViewControls(availableYears, getAggregates);
+        renderView(getAggregates());
     }
 
     loadTrends();
