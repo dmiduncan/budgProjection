@@ -1007,6 +1007,23 @@
         syncControls();
     }
 
+    const queryPageSize = 1000;
+
+    async function fetchAllRows(queryFactory) {
+        const rows = [];
+
+        for (let offset = 0; ; offset += queryPageSize) {
+            const { data, error } = await queryFactory()
+                .range(offset, offset + queryPageSize - 1);
+            if (error) return { data: null, error };
+
+            rows.push(...(data || []));
+            if (!data || data.length < queryPageSize) {
+                return { data: rows, error: null };
+            }
+        }
+    }
+
     async function loadTrends() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
@@ -1015,15 +1032,15 @@
         }
 
         const [completedRes, journalRes] = await Promise.all([
-            supabase
+            fetchAllRows(() => supabase
                 .from("lu_media_status")
                 .select("media_id,date_finished,status,lu_media(media_type,title,cover_art_url)")
                 .eq("user_id", user.id)
-                .eq("status", "completed"),
-            supabase
+                .eq("status", "completed")),
+            fetchAllRows(() => supabase
                 .from("lu_journal_entry")
                 .select("units,date_created,lu_media_status!inner(user_id,media_id,lu_media!inner(media_type))")
-                .eq("lu_media_status.user_id", user.id)
+                .eq("lu_media_status.user_id", user.id))
         ]);
 
         if (completedRes.error || journalRes.error) {
