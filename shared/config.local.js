@@ -2,15 +2,17 @@
 // a local config script won't 404. If you want local Supabase keys for dev, create
 // shared/supabase-keys.js (untracked) by copying shared/supabase-keys.example.js.
 
-// Attempt to load common relative paths for a local supabase-keys.js file. Loading
-// multiple tags is harmless; the correct one for the page depth will succeed.
+// Resolve the keys file relative to this loader rather than the page URL. This
+// works for pages at any directory depth without probing invalid URLs.
 (function() {
   try {
-    document.write('<script src="./shared/supabase-keys.js"><\/script>');
-    document.write('<script src="../shared/supabase-keys.js"><\/script>');
-    document.write('<script src="../../shared/supabase-keys.js"><\/script>');
+    var loader = document.currentScript;
+    if (!loader || !loader.src) {
+      throw new Error('config.local.js must be loaded by a script element');
+    }
+    var keysUrl = new URL('supabase-keys.js', loader.src).href;
+    document.write('<script src="' + keysUrl + '"><\/script>');
   } catch (e) {
-    // document.write can throw in some CSP contexts; fail silently.
     console.warn('config.local loader: could not inject supabase-keys.js', e);
   }
 })();
