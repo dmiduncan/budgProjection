@@ -31,6 +31,34 @@ export function getMediaImageUrl(media) {
     return media.imageUrl || media.cover_art_url || null;
 }
 
+const ZERO_PROGRESS_MEDIA_TYPES = [
+    { key: 'book',    label: 'Books' },
+    { key: 'manga',   label: 'Manga' },
+    { key: 'anime',   label: 'Anime' },
+    { key: 'tvshow',  label: 'TV Shows' },
+    { key: 'movie',   label: 'Movies' },
+    { key: 'concert', label: 'Concerts' }
+];
+
+function normaliseMediaType(mediaType) {
+    const type = (mediaType || '').toLowerCase().trim();
+    if (type === 'tv show' || type === 'tv shows' || type === 'tv_show' || type === 'tvshow') {
+        return 'tvshow';
+    }
+    return type;
+}
+
+function renderMediaTypeDivider(label) {
+    const divider = document.createElement('div');
+    divider.className = 'media-type-divider';
+    divider.setAttribute('role', 'heading');
+    divider.setAttribute('aria-level', '2');
+    const labelElement = document.createElement('span');
+    labelElement.textContent = label;
+    divider.appendChild(labelElement);
+    return divider;
+}
+
 // ── Card builder ──────────────────────────────────────────────────────────────
 
 /**
@@ -122,7 +150,31 @@ export function renderMediaItems(mediaArray) {
         return;
     }
 
-    mediaArray.forEach(media => mediaList.appendChild(renderMediaCard(media)));
+    const inProgress = mediaArray.filter(media => Number(media.currentPage || 0) > 0);
+    const notStarted = mediaArray
+        .filter(media => Number(media.currentPage || 0) <= 0)
+        .map((media, index) => ({ media, index }))
+        .sort((a, b) => {
+            const aOrder = ZERO_PROGRESS_MEDIA_TYPES.findIndex(type => type.key === normaliseMediaType(a.media.mediaType));
+            const bOrder = ZERO_PROGRESS_MEDIA_TYPES.findIndex(type => type.key === normaliseMediaType(b.media.mediaType));
+            return (aOrder === -1 ? ZERO_PROGRESS_MEDIA_TYPES.length : aOrder)
+                - (bOrder === -1 ? ZERO_PROGRESS_MEDIA_TYPES.length : bOrder)
+                || a.index - b.index;
+        })
+        .map(entry => entry.media);
+
+    inProgress.forEach(media => mediaList.appendChild(renderMediaCard(media)));
+
+    let previousType = null;
+    notStarted.forEach(media => {
+        const mediaType = normaliseMediaType(media.mediaType);
+        if (mediaType !== previousType) {
+            const typeConfig = ZERO_PROGRESS_MEDIA_TYPES.find(type => type.key === mediaType);
+            mediaList.appendChild(renderMediaTypeDivider(typeConfig?.label || media.mediaType || 'Other'));
+            previousType = mediaType;
+        }
+        mediaList.appendChild(renderMediaCard(media));
+    });
 }
 
 /**
