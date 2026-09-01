@@ -1,13 +1,5 @@
 /* QuestLog-specific styles */
 
-#app-container {
-    padding: 2em 15%;
-}
-
-@media (max-width: 900px) {
-    #app-container { padding: 1.5em 4%; }
-}
-
 .task-header {
     display: flex;
     justify-content: space-between;
@@ -291,24 +283,6 @@
     color: #ffd0d0;
     border-color: #b85c5c;
     background: rgba(184, 92, 92, 0.12);
-}
-
-/* Modal overwrites from main.css */
-.modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    z-index: 200;
-}
-
-.modal-overlay.active {
-    display: flex;
 }
 
 /* Mobile responsive */

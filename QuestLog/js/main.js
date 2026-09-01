@@ -244,7 +244,7 @@ function renderTaskDetail(task, children, isParent, parentTaskId = null) {
     const statusSelect = document.getElementById('status-select');
     statusSelect?.addEventListener('change', async (e) => {
         const newStatus = e.target.value;
-        const { error } = await updateTask(taskId, { status: newStatus });
+        const { error } = await updateTask(task.id, { status: newStatus });
 
         if (error) {
             showErrorToast('Failed to update status.');
@@ -253,7 +253,7 @@ function renderTaskDetail(task, children, isParent, parentTaskId = null) {
 
         showSuccessToast('Status updated!');
         await loadParentTasks();
-        openDetailPanel(taskId); // Refresh panel
+        openDetailPanel(task.id); // Refresh panel
     });
 
     if (isParent) {
