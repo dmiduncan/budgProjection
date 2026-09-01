@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <title>QuestLog</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <link rel="stylesheet" href="../css/questlog.css">
+</head>
+<body>
+
+    <div id="toolbar"></div>
+
+    <div id="auth-container">
+        <div>
+            <div class="auth__eyebrow">Your Quests Await</div>
+            <div class="auth__title">quest<span>Log</span></div>
+        </div>
+        <div class="auth__form">
+            <input type="email"    id="auth-email"    placeholder="Email"    autocomplete="email">
+            <input type="password" id="auth-password" placeholder="Password" autocomplete="current-password">
+            <div class="auth__actions">
+                <button type="button" class="button button--primary" id="auth-login-btn">Login</button>
+                <button type="button" class="button" id="auth-signup-btn">Sign Up</button>
+            </div>
+            <div id="auth-message"></div>
+        </div>
+    </div>
+
+    <div id="app-container">
+        <div class="task-header">
+            <h2>Your Quests</h2>
+            <button type="button" class="button button--primary" id="add-task-btn">+ New Quest</button>
+        </div>
+        <div id="tasks-container"></div>
+    </div>
+
+    <!-- Task Detail Side Panel -->
+    <div id="task-detail-panel" class="task-detail-panel">
+        <div class="task-detail-panel__header">
+            <h3>Quest Details</h3>
+            <button type="button" class="task-detail-panel__close" id="panel-close-btn">✕</button>
+        </div>
+        <div class="task-detail-panel__content" id="panel-content">
+            <!-- Dynamically populated -->
+        </div>
+    </div>
+
+    <!-- Create/Edit Task Modal -->
+    <div id="task-modal" class="modal-overlay">
+        <div class="modal-content">
+            <button type="button" class="button modal-cancel-button" id="modal-cancel-btn">✕</button>
+            <h3 id="modal-title">Create New Quest</h3>
+            <form id="task-form">
+                <div class="modal-field">
+                    <label for="task-title">Quest Title *</label>
+                    <input type="text" id="task-title" required placeholder="Enter quest title">
+                </div>
+                <div class="modal-field">
+                    <label for="task-description">Description</label>
+                    <textarea id="task-description" placeholder="Enter quest description"></textarea>
+                </div>
+                <div class="modal-field">
+                    <label for="task-type">Quest Type</label>
+                    <input type="text" id="task-type" placeholder="e.g., Dungeon Crawl, Daily Task">
+                </div>
+                <div class="modal-field">
+                    <label for="task-due-date">Due Date</label>
+                    <input type="date" id="task-due-date">
+                </div>
+                <div class="modal-buttons">
+                    <button type="button" class="button" id="modal-cancel-submit">Cancel</button>
+                    <button type="submit" class="button button--primary">Create Quest</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <script src="../shared/config.local.js"></script>
+    <script type="module">
+        import { initToolbar } from './js/toolbar.js';
+        import './js/auth.js';
+        import './js/main.js';
+        initToolbar();
+    </script>
+
+</body>
+</html>
