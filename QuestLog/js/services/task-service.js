@@ -108,7 +108,7 @@ export async function fetchChildTasks(parentTaskId) {
  * Create a new child task.
  */
 export async function createChildTask(userId, parentTaskId, taskData) {
-    const { title, description, taskType, dueDate, status = 'To Do' } = taskData;
+    const { title, description, status = 'To Do' } = taskData;
 
     const { data, error } = await supabase
         .from('lu_quest_tasks')
@@ -117,8 +117,6 @@ export async function createChildTask(userId, parentTaskId, taskData) {
             parent_task_id: parentTaskId,
             title,
             description: description || null,
-            task_type: taskType || null,
-            due_date: dueDate || null,
             status
         })
         .select()
