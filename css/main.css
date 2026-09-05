@@ -226,6 +226,8 @@ button:active, .button:active {
   background: none;
   -webkit-background-clip: unset;
   background-clip: unset;
+  text-decoration: none;
+  cursor: pointer;
 }
 
 .toolbar__logo span { color: var(--accent); }

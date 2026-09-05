@@ -1,7 +1,4 @@
 // js/toolbar.js
-// Self-contained toolbar — renders logo, nav, and auth-aware controls.
-// Reacts to userSignedIn / userSignedOut events.
-// Has zero dependency on media data or services.
 
 import { signOut } from './auth.js';
 
@@ -12,28 +9,13 @@ export function initToolbar() {
     toolbar.innerHTML = `
         <div class="toolbar__inner">
             <div class="toolbar__brand">
-                <span class="toolbar__logo">shelf<span>STACK</span></span>
+                <a class="toolbar__logo" href="../">shelf<span>STACK</span></a>
             </div>
             <nav class="toolbar__nav" id="toolbar-nav">
-                <button type="button" class="toolbar__btn" title="Trends" onclick="window.location.href='https://dmiduncan.github.io/HandyHaversack/ShelfStack/trends/'">
+                <button type="button" class="toolbar__btn" title="Trends" onclick="window.location.href='trends/'">
                     <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24"
                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="2,16 6,9 10,13 14,6 18,10 22,5"/>
-                    </svg>
-                </button>
-                <button type="button" class="toolbar__btn" title="Budget Projection" onclick="window.location.href='https://dmiduncan.github.io/HandyHaversack/BudgProjection/'">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24"
-                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <rect x="2" y="7" width="20" height="14" rx="2"/>
-                        <path d="M16 14a1 1 0 1 0 2 0 1 1 0 0 0-2 0"/>
-                        <path d="M22 11V7a2 2 0 0 0-2-2L6 5a2 2 0 0 1-2-2"/>
-                    </svg>
-                </button>
-                <button type="button" class="toolbar__btn" id="toolbar-home-btn" title="Home" onclick="window.location.href='https://dmiduncan.github.io/HandyHaversack/ShelfStack/'">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none"
-                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z"/>
-                        <path d="M9 21V12h6v9"/>
                     </svg>
                 </button>
                 <button type="button" class="toolbar__btn toolbar__btn--hidden" id="toolbar-logout-btn" title="Sign out">
