@@ -215,7 +215,7 @@ function renderTaskDetail(task, children, isParent, parentTaskId = null) {
         <div class="task-detail-field">
             <div class="task-detail-label">Status</div>
             <select id="status-select" class="task-detail-value" style="background: var(--surface); border: 1px solid var(--border); padding: 0.5em; border-radius: var(--radius);">
-                ${['To Do', 'Planning', 'In Progress', 'Validation', 'In Review', 'Done'].map(status => 
+                ${['To Do', 'Planning', 'In Progress', 'Testing', 'In Review', 'Done', 'Cancelled'].map(status => 
                     `<option value="${status}" ${status === task.status ? 'selected' : ''}>${status}</option>`
                 ).join('')}
             </select>

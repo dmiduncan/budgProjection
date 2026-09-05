@@ -6,7 +6,7 @@ import { supabase } from '../../../shared/js/supabase-client.js';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const STATUSES = ['To Do', 'Planning', 'In Progress', 'Validation', 'In Review', 'Done'];
+const STATUSES = ['To Do', 'Planning', 'In Progress', 'Testing', 'In Review', 'Done', 'Cancelled'];
 
 export { STATUSES };
 
