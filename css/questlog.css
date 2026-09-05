@@ -252,6 +252,8 @@
     font-weight: 600;
     color: var(--text);
     font-size: 0.95em;
+    text-wrap: wrap;
+    text-align: center;
 }
 
 .child-task-status {
