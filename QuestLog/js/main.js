@@ -14,6 +14,7 @@ import {
     calculateDaysUntilDue,
     dateToUTC,
     utcToLocalDate,
+    STATUSES,
     getValidStatusTransitions,
     isValidStatusTransition
 } from './services/task-service.js';
@@ -42,6 +43,7 @@ function openCreateTaskModal() {
     childTaskParentId = null;
     taskForm.reset();
     taskTypeInput.readOnly = false;
+    taskDueDateInput.readOnly = false;
     document.getElementById('modal-title').textContent = 'Create New Quest';
     taskTitleInput.focus();
     taskModal.classList.add('active');
@@ -51,6 +53,7 @@ function closeCreateTaskModal() {
     taskModal.classList.remove('active');
     taskForm.reset();
     taskTypeInput.readOnly = false;
+    taskDueDateInput.readOnly = false;
     childTaskParentId = null;
 }
 
@@ -107,6 +110,11 @@ function renderTasks(tasks, types) {
 
     Object.entries(tasksByType).forEach(([type, typeTasks]) => {
         if (typeTasks.length === 0) return;
+
+        typeTasks.sort((a, b) => {
+            const createdAtDifference = new Date(a.created_at) - new Date(b.created_at);
+            return createdAtDifference || Number(a.id) - Number(b.id);
+        });
 
         html += `
             <div class="task-section">
@@ -215,7 +223,7 @@ function renderTaskDetail(task, children, isParent, parentTaskId = null) {
         <div class="task-detail-field">
             <div class="task-detail-label">Status</div>
             <select id="status-select" class="task-detail-value" style="background: var(--surface); border: 1px solid var(--border); padding: 0.5em; border-radius: var(--radius);">
-                ${['To Do', 'Planning', 'In Progress', 'Testing', 'In Review', 'Done', 'Cancelled'].map(status => 
+                ${STATUSES.map(status =>
                     `<option value="${status}" ${status === task.status ? 'selected' : ''}>${status}</option>`
                 ).join('')}
             </select>
@@ -314,6 +322,8 @@ function openCreateChildTaskModal(parentTask) {
     taskForm.reset();
     taskTypeInput.value = parentTask.task_type || '';
     taskTypeInput.readOnly = true;
+    taskDueDateInput.value = parentTask.due_date ? utcToLocalDate(parentTask.due_date) : '';
+    taskDueDateInput.readOnly = true;
     document.getElementById('modal-title').textContent = 'Create New Subtask';
     taskTitleInput.focus();
     taskModal.classList.add('active');
